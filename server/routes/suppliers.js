@@ -74,7 +74,7 @@ router.put('/:id', requireModule('suppliers'), (req, res) => {
 router.delete('/:id', requireModule('suppliers'), (req, res) => {
   try {
     const db = getDb();
-    db.prepare('UPDATE suppliers SET status = "inactive", updated_at = datetime("now") WHERE id = ? AND sector_id = ?').run(req.params.id, req.user.sector_id);
+    db.prepare('DELETE FROM suppliers WHERE id = ? AND sector_id = ?').run(req.params.id, req.user.sector_id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

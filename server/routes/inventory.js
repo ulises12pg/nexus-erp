@@ -10,7 +10,7 @@ router.get('/products', requireModule('inventory'), (req, res) => {
     const db = getDb();
     const { search, category, low_stock, page = 1, limit = 50 } = req.query;
     const sectorId = req.user.sector_id;
-    let query = 'SELECT p.*, pc.name as category_name FROM products p LEFT JOIN product_categories pc ON p.category_id = pc.id WHERE p.sector_id = ?';
+    let query = 'SELECT p.*, pc.name as category_name FROM products p LEFT JOIN product_categories pc ON p.category_id = pc.id WHERE p.sector_id = ? AND p.active = 1';
     const params = [sectorId];
 
     if (search) { query += ' AND (p.name LIKE ? OR p.sku LIKE ?)'; params.push(`%${search}%`, `%${search}%`); }
@@ -55,12 +55,22 @@ router.put('/products/:id', requireModule('inventory'), (req, res) => {
   try {
     const db = getDb();
     const { name, description, category_id, unit, min_stock, max_stock, cost_price, sale_price, location, custom_data, active } = req.body;
-
-    db.prepare(`UPDATE products SET name=COALESCE(?,name), description=COALESCE(?,description), category_id=COALESCE(?,category_id), 
-      unit=COALESCE(?,unit), min_stock=COALESCE(?,min_stock), max_stock=COALESCE(?,max_stock), cost_price=COALESCE(?,cost_price), 
-      sale_price=COALESCE(?,sale_price), location=COALESCE(?,location), custom_data=COALESCE(?,custom_data), active=COALESCE(?,active), 
-      updated_at=datetime('now') WHERE id=? AND sector_id=?`)
-      .run(name, description, category_id, unit, min_stock, max_stock, cost_price, sale_price, location, custom_data ? JSON.stringify(custom_data) : null, active, req.params.id, req.user.sector_id);
+    const sets = [];
+    const params = [];
+    if (name !== undefined) { sets.push('name=?'); params.push(name); }
+    if (description !== undefined) { sets.push('description=?'); params.push(description); }
+    if (category_id !== undefined) { sets.push('category_id=?'); params.push(category_id); }
+    if (unit !== undefined) { sets.push('unit=?'); params.push(unit); }
+    if (min_stock !== undefined) { sets.push('min_stock=?'); params.push(min_stock); }
+    if (max_stock !== undefined) { sets.push('max_stock=?'); params.push(max_stock); }
+    if (cost_price !== undefined) { sets.push('cost_price=?'); params.push(cost_price); }
+    if (sale_price !== undefined) { sets.push('sale_price=?'); params.push(sale_price); }
+    if (location !== undefined) { sets.push('location=?'); params.push(location); }
+    if (custom_data !== undefined) { sets.push('custom_data=?'); params.push(JSON.stringify(custom_data)); }
+    if (active !== undefined) { sets.push('active=?'); params.push(active); }
+    sets.push("updated_at=datetime('now')");
+    params.push(req.params.id, req.user.sector_id);
+    db.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id=? AND sector_id=?`).run(...params);
 
     const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
     res.json(product);

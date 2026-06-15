@@ -29,8 +29,16 @@ router.put('/sector/:id', requireRole('superadmin', 'admin'), (req, res) => {
   try {
     const db = getDb();
     const { name, description, active_modules, config } = req.body;
-    db.prepare('UPDATE sectors SET name=COALESCE(?,name), description=COALESCE(?,description), active_modules=COALESCE(?,active_modules), config=COALESCE(?,config) WHERE id=?')
-      .run(name, description, active_modules ? JSON.stringify(active_modules) : null, config ? JSON.stringify(config) : null, req.params.id);
+    const sets = [];
+    const params = [];
+    if (name !== undefined) { sets.push('name=?'); params.push(name); }
+    if (description !== undefined) { sets.push('description=?'); params.push(description); }
+    if (active_modules !== undefined) { sets.push('active_modules=?'); params.push(JSON.stringify(active_modules)); }
+    if (config !== undefined) { sets.push('config=?'); params.push(JSON.stringify(config)); }
+    if (sets.length > 0) {
+      params.push(req.params.id);
+      db.prepare(`UPDATE sectors SET ${sets.join(', ')} WHERE id=?`).run(...params);
+    }
     const sector = db.prepare('SELECT * FROM sectors WHERE id = ?').get(req.params.id);
     res.json(sector);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -80,8 +88,8 @@ router.put('/custom-fields/:id', requireRole('superadmin', 'admin'), (req, res) 
   try {
     const db = getDb();
     const { field_label_es, field_label_en, field_type, required, options, sort_order, active } = req.body;
-    db.prepare('UPDATE custom_fields SET field_label_es=COALESCE(?,field_label_es), field_label_en=COALESCE(?,field_label_en), field_type=COALESCE(?,field_type), required=COALESCE(?,required), options=COALESCE(?,options), sort_order=COALESCE(?,sort_order), active=COALESCE(?,active) WHERE id=? AND sector_id=?')
-      .run(field_label_es, field_label_en, field_type, required, options ? JSON.stringify(options) : null, sort_order, active, req.params.id, req.user.sector_id);
+    db.prepare('UPDATE custom_fields SET field_label_es=?, field_label_en=?, field_type=?, required=?, options=?, sort_order=?, active=? WHERE id=? AND sector_id=?')
+      .run(field_label_es, field_label_en, field_type, required || 0, options ? JSON.stringify(options) : null, sort_order || 0, active !== undefined ? active : 1, req.params.id, req.user.sector_id);
     const field = db.prepare('SELECT * FROM custom_fields WHERE id = ?').get(req.params.id);
     res.json(field);
   } catch (err) { res.status(500).json({ error: err.message }); }

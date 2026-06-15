@@ -6,7 +6,7 @@ import {
   FileText, TrendingUp, TrendingDown, AlertTriangle, ArrowUpDown, Eye, Star, 
   ChevronDown, Menu, Globe, LogOut, ArrowRight, ArrowLeft, Box, Truck, Factory,
   Flame, HardHat, CalendarDays, Clock, MapPin, CheckCircle2, XCircle, BarChart3,
-  PieChart, Filter, RefreshCw, Send, CreditCard, Receipt
+  PieChart, Filter, RefreshCw, Send, CreditCard, Receipt, Sun, Moon
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell } from 'recharts';
 import api from './services/api.js';
@@ -17,10 +17,12 @@ import { t } from './i18n.js';
 // ==============================
 const AuthContext = createContext(null);
 const LangContext = createContext('es');
+const ThemeContext = createContext(null);
 const ToastContext = createContext(null);
 
 function useAuth() { return useContext(AuthContext); }
 function useLang() { return useContext(LangContext); }
+function useTheme() { return useContext(ThemeContext); }
 function useToast() { return useContext(ToastContext); }
 
 // ==============================
@@ -68,6 +70,74 @@ function ToastProvider({ children }) {
 }
 
 // ==============================
+// CONFIRM SYSTEM
+// ==============================
+const ConfirmContext = createContext(null);
+
+function useConfirm() { return useContext(ConfirmContext); }
+
+function ConfirmProvider({ children }) {
+  const [confirmState, setConfirmState] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(0);
+
+  const confirmDialog = useCallback((options) => {
+    return new Promise((resolve) => {
+      setConfirmState({ ...options, resolve });
+      setTimeLeft(5);
+    });
+  }, []);
+
+  const handleClose = () => {
+    if (confirmState?.resolve) confirmState.resolve(false);
+    setConfirmState(null);
+  };
+
+  const handleConfirm = () => {
+    if (confirmState?.resolve) confirmState.resolve(true);
+    setConfirmState(null);
+  };
+
+  useEffect(() => {
+    if (confirmState && timeLeft > 0) {
+      const timer = setTimeout(() => setTimeLeft(timeLeft - 1), 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [confirmState, timeLeft]);
+
+  return (
+    <ConfirmContext.Provider value={confirmDialog}>
+      {children}
+      {confirmState && (
+        <div className="modal-overlay" style={{ zIndex: 9999 }}>
+          <div className="modal-content animate-in" style={{ maxWidth: 400, textAlign: 'center', padding: '32px 24px' }}>
+            <div style={{ marginBottom: 16, display: 'flex', justifyContent: 'center' }}>
+              <div style={{ width: 64, height: 64, borderRadius: '50%', background: 'rgba(239,68,68,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--danger)' }}>
+                <AlertTriangle size={32} />
+              </div>
+            </div>
+            <h3 style={{ marginBottom: 8, fontSize: '1.25rem', fontWeight: 600 }}>{confirmState.title || 'Confirmar Acción'}</h3>
+            <p style={{ color: 'var(--text-secondary)', marginBottom: 24, fontSize: '0.95rem' }}>{confirmState.message}</p>
+            <div style={{ display: 'flex', gap: 12 }}>
+              <button className="btn btn-secondary" onClick={handleClose} style={{ flex: 1 }}>
+                Cancelar
+              </button>
+              <button 
+                className="btn btn-primary" 
+                onClick={handleConfirm} 
+                disabled={timeLeft > 0} 
+                style={{ flex: 1, backgroundColor: timeLeft > 0 ? 'var(--text-tertiary)' : 'var(--danger)', borderColor: 'transparent', opacity: timeLeft > 0 ? 0.7 : 1, transition: 'all 0.2s' }}
+              >
+                {timeLeft > 0 ? `Eliminar en ${timeLeft}s` : 'Eliminar Registro'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </ConfirmContext.Provider>
+  );
+}
+
+// ==============================
 // MODAL COMPONENT
 // ==============================
 function Modal({ isOpen, onClose, title, children, wide }) {
@@ -90,6 +160,7 @@ function Modal({ isOpen, onClose, title, children, wide }) {
 // ==============================
 function LoginPage({ onLogin }) {
   const [lang, setLang] = useState('es');
+  const { theme, setTheme } = useTheme();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -109,13 +180,17 @@ function LoginPage({ onLogin }) {
 
   return (
     <div className="login-page">
-      <div className="login-card animate-in">
-        <div style={{ position: 'absolute', top: 16, right: 16 }}>
-          <div className="lang-switch">
-            <button type="button" className={`lang-switch-btn ${lang === 'es' ? 'active' : ''}`} onClick={() => setLang('es')}>ES</button>
-            <button type="button" className={`lang-switch-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => setLang('en')}>EN</button>
-          </div>
+      <div className="login-toggles" style={{ position: 'absolute', bottom: 24, right: 24, display: 'flex', gap: 8 }}>
+        <div className="lang-switch">
+          <button type="button" className={`lang-switch-btn ${lang === 'es' ? 'active' : ''}`} onClick={() => setLang('es')}>ES</button>
+          <button type="button" className={`lang-switch-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => setLang('en')}>EN</button>
         </div>
+        <div className="lang-switch">
+          <button type="button" className={`lang-switch-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}><Sun size={14}/></button>
+          <button type="button" className={`lang-switch-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}><Moon size={14}/></button>
+        </div>
+      </div>
+      <div className="login-card animate-in">
         <div className="login-logo">
           <div className="logo-mark">N</div>
           <h2>{t('login_welcome', lang)}</h2>
@@ -150,6 +225,8 @@ function LoginPage({ onLogin }) {
 function Sidebar({ user, lang, setLang, onLogout, activeModules }) {
   const location = useLocation();
   const [collapsed, setCollapsed] = useState(false);
+  const [hoverLogout, setHoverLogout] = useState(false);
+  const { theme, setTheme } = useTheme();
   const sectorIcons = { truck: Truck, wrench: Wrench, factory: Factory, cog: Settings, flame: Flame };
 
   const modules = [
@@ -195,9 +272,15 @@ function Sidebar({ user, lang, setLang, onLogout, activeModules }) {
           paddingLeft: collapsed ? 0 : 12,
           paddingRight: collapsed ? 0 : 12
         }}>
-          <div className="lang-switch">
-            <button type="button" className={`lang-switch-btn ${lang === 'es' ? 'active' : ''}`} onClick={() => setLang('es')}>ES</button>
-            <button type="button" className={`lang-switch-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => setLang('en')}>EN</button>
+          <div style={{ display: 'flex', flexDirection: collapsed ? 'column' : 'row', gap: 4 }}>
+            <div className="lang-switch">
+              <button type="button" className={`lang-switch-btn ${lang === 'es' ? 'active' : ''}`} onClick={() => setLang('es')}>ES</button>
+              <button type="button" className={`lang-switch-btn ${lang === 'en' ? 'active' : ''}`} onClick={() => setLang('en')}>EN</button>
+            </div>
+            <div className="lang-switch">
+              <button type="button" className={`lang-switch-btn ${theme === 'light' ? 'active' : ''}`} onClick={() => setTheme('light')}><Sun size={14}/></button>
+              <button type="button" className={`lang-switch-btn ${theme === 'dark' ? 'active' : ''}`} onClick={() => setTheme('dark')}><Moon size={14}/></button>
+            </div>
           </div>
           <button 
             type="button"
@@ -208,13 +291,27 @@ function Sidebar({ user, lang, setLang, onLogout, activeModules }) {
             {collapsed ? <ChevronRight size={16} /> : <Menu size={16} />}
           </button>
         </div>
-        <div className="sidebar-user" onClick={onLogout}>
-          <div className="user-avatar">{initials}</div>
-          {!collapsed && (
-            <div className="user-info">
-              <div className="user-name">{user?.full_name}</div>
-              <div className="user-role">{user?.role}</div>
+        <div 
+          className="sidebar-user" 
+          onClick={onLogout}
+          onMouseEnter={() => setHoverLogout(true)}
+          onMouseLeave={() => setHoverLogout(false)}
+        >
+          {hoverLogout ? (
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%', color: 'var(--danger)', height: 40 }}>
+              <LogOut size={20} />
+              {!collapsed && <span style={{ marginLeft: 8, fontWeight: 600 }}>{lang === 'es' ? 'Cerrar sesión' : 'Logout'}</span>}
             </div>
+          ) : (
+            <>
+              <div className="user-avatar">{initials}</div>
+              {!collapsed && (
+                <div className="user-info">
+                  <div className="user-name">{user?.full_name}</div>
+                  <div className="user-role">{user?.role}</div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -394,8 +491,14 @@ function CrudModule({ title, fetchFn, columns, formFields, createFn, updateFn, d
     } catch (e) { toast(e.message, 'error'); }
   };
 
+  const confirmDialog = useConfirm();
+
   const handleDelete = async (id) => {
-    if (!confirm(t('confirm_delete', lang))) return;
+    const isConfirmed = await confirmDialog({
+      title: lang === 'en' ? 'Delete Record' : 'Eliminar Registro',
+      message: t('confirm_delete', lang)
+    });
+    if (!isConfirmed) return;
     try {
       await deleteFn(id);
       toast(t('success_delete', lang));
@@ -468,19 +571,25 @@ function CrudModule({ title, fetchFn, columns, formFields, createFn, updateFn, d
       </div>
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={editItem ? `${t('edit', lang)} ${title}` : `${t('add', lang)} ${title}`} wide>
-        <div className="modal-body">
+        <div className="modal-body form-grid">
           {formFields.map((f, i) => (
-            <div className="form-group" key={i}>
+            <div className={`form-group ${f.fullWidth || f.type === 'textarea' ? 'col-span-2' : ''}`} key={i}>
               <label className="form-label">{f.label}{f.required ? ' *' : ''}</label>
               {f.type === 'select' ? (
-                <select className="form-select" value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}>
-                  <option value="">--</option>
-                  {(f.options || []).map((o, oi) => <option key={oi} value={o.value}>{o.label}</option>)}
-                </select>
+                <div className={f.icon ? 'form-input-group' : ''}>
+                  {f.icon && <f.icon size={16} className="input-icon" />}
+                  <select className="form-select" value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })}>
+                    <option value="">--</option>
+                    {(f.options || []).map((o, oi) => <option key={oi} value={o.value}>{o.label}</option>)}
+                  </select>
+                </div>
               ) : f.type === 'textarea' ? (
                 <textarea className="form-textarea" value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: e.target.value })} />
               ) : (
-                <input className="form-input" type={f.type || 'text'} value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value })} placeholder={f.placeholder} />
+                <div className={f.icon ? 'form-input-group' : ''}>
+                  {f.icon && <f.icon size={16} className="input-icon" />}
+                  <input className="form-input" type={f.type || 'text'} value={formData[f.key] || ''} onChange={e => setFormData({ ...formData, [f.key]: f.type === 'number' ? Number(e.target.value) : e.target.value })} placeholder={f.placeholder} />
+                </div>
               )}
             </div>
           ))}
@@ -517,14 +626,14 @@ function InventoryPage() {
     ]}
     formFields={[
       { key: 'sku', label: t('inv_sku', lang), required: true },
-      { key: 'name', label: t('inv_product_name', lang), required: true },
+      { key: 'name', label: t('inv_product_name', lang), required: true, fullWidth: true },
       { key: 'unit', label: t('inv_unit', lang), placeholder: 'pza, lt, kg...' },
       { key: 'stock', label: t('inv_stock', lang), type: 'number' },
       { key: 'min_stock', label: t('inv_min_stock', lang), type: 'number' },
       { key: 'max_stock', label: t('inv_max_stock', lang), type: 'number' },
-      { key: 'cost_price', label: t('inv_cost_price', lang), type: 'number' },
-      { key: 'sale_price', label: t('inv_sale_price', lang), type: 'number' },
-      { key: 'location', label: t('inv_location', lang) },
+      { key: 'cost_price', label: t('inv_cost_price', lang), type: 'number', icon: DollarSign },
+      { key: 'sale_price', label: t('inv_sale_price', lang), type: 'number', icon: DollarSign },
+      { key: 'location', label: t('inv_location', lang), icon: MapPin },
     ]}
     createFn={(d) => api.createProduct(d)}
     updateFn={(id, d) => api.updateProduct(id, d)}
@@ -641,18 +750,18 @@ function PayrollPage() {
       </div>
 
       <Modal isOpen={modalOpen} onClose={() => setModalOpen(false)} title={formType === 'employee' ? (editItem ? t('edit',lang) : t('pay_add_employee',lang)) : t('pay_add_period',lang)} wide>
-        <div className="modal-body">
+        <div className="modal-body form-grid">
           {formType === 'employee' ? <>
             <div className="form-group"><label className="form-label">{t('pay_employee_code', lang)}</label><input className="form-input" value={formData.employee_code||''} onChange={e => setFormData({...formData, employee_code: e.target.value})} /></div>
-            <div className="form-group"><label className="form-label">{t('pay_full_name', lang)} *</label><input className="form-input" value={formData.full_name||''} onChange={e => setFormData({...formData, full_name: e.target.value})} /></div>
+            <div className="form-group col-span-2"><label className="form-label">{t('pay_full_name', lang)} *</label><input className="form-input" value={formData.full_name||''} onChange={e => setFormData({...formData, full_name: e.target.value})} /></div>
             <div className="form-group"><label className="form-label">{t('pay_position', lang)}</label><input className="form-input" value={formData.position||''} onChange={e => setFormData({...formData, position: e.target.value})} /></div>
             <div className="form-group"><label className="form-label">{t('department', lang)}</label><input className="form-input" value={formData.department||''} onChange={e => setFormData({...formData, department: e.target.value})} /></div>
-            <div className="form-group"><label className="form-label">{t('pay_base_salary', lang)}</label><input className="form-input" type="number" value={formData.base_salary||''} onChange={e => setFormData({...formData, base_salary: Number(e.target.value)})} /></div>
-            <div className="form-group"><label className="form-label">{t('pay_hire_date', lang)}</label><input className="form-input" type="date" value={formData.hire_date||''} onChange={e => setFormData({...formData, hire_date: e.target.value})} /></div>
+            <div className="form-group"><label className="form-label">{t('pay_base_salary', lang)}</label><div className="form-input-group"><DollarSign size={16} className="input-icon"/><input className="form-input" type="number" value={formData.base_salary||''} onChange={e => setFormData({...formData, base_salary: Number(e.target.value)})} /></div></div>
+            <div className="form-group"><label className="form-label">{t('pay_hire_date', lang)}</label><div className="form-input-group"><CalendarDays size={16} className="input-icon"/><input className="form-input" type="date" value={formData.hire_date||''} onChange={e => setFormData({...formData, hire_date: e.target.value})} /></div></div>
           </> : <>
-            <div className="form-group"><label className="form-label">{t('pay_period_name', lang)} *</label><input className="form-input" value={formData.name||''} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Quincena 1 - Julio 2026" /></div>
-            <div className="form-group"><label className="form-label">{t('trv_start_date', lang)} *</label><input className="form-input" type="date" value={formData.period_start||''} onChange={e => setFormData({...formData, period_start: e.target.value})} /></div>
-            <div className="form-group"><label className="form-label">{t('trv_end_date', lang)} *</label><input className="form-input" type="date" value={formData.period_end||''} onChange={e => setFormData({...formData, period_end: e.target.value})} /></div>
+            <div className="form-group col-span-2"><label className="form-label">{t('pay_period_name', lang)} *</label><input className="form-input" value={formData.name||''} onChange={e => setFormData({...formData, name: e.target.value})} placeholder="Quincena 1 - Julio 2026" /></div>
+            <div className="form-group"><label className="form-label">{t('trv_start_date', lang)} *</label><div className="form-input-group"><CalendarDays size={16} className="input-icon"/><input className="form-input" type="date" value={formData.period_start||''} onChange={e => setFormData({...formData, period_start: e.target.value})} /></div></div>
+            <div className="form-group"><label className="form-label">{t('trv_end_date', lang)} *</label><div className="form-input-group"><CalendarDays size={16} className="input-icon"/><input className="form-input" type="date" value={formData.period_end||''} onChange={e => setFormData({...formData, period_end: e.target.value})} /></div></div>
           </>}
         </div>
         <div className="modal-footer"><button className="btn btn-secondary" onClick={() => setModalOpen(false)}>{t('cancel', lang)}</button><button className="btn btn-primary" onClick={handleSave}>{t('save', lang)}</button></div>
@@ -690,9 +799,9 @@ function ExpensesPage() {
       { key: 'status', label: t('status', lang), format: 'status' },
     ]}
     formFields={[
-      { key: 'description', label: t('description', lang), required: true },
-      { key: 'amount', label: t('amount', lang), type: 'number', required: true },
-      { key: 'date', label: t('date', lang), type: 'date', required: true },
+      { key: 'description', label: t('description', lang), required: true, fullWidth: true },
+      { key: 'amount', label: t('amount', lang), type: 'number', required: true, icon: DollarSign },
+      { key: 'date', label: t('date', lang), type: 'date', required: true, icon: CalendarDays },
       { key: 'department', label: t('department', lang) },
       { key: 'payment_method', label: t('exp_payment_method', lang), type: 'select', options: [
         { value: 'transfer', label: 'Transferencia' }, { value: 'card', label: 'Tarjeta' },
@@ -735,12 +844,12 @@ function SuppliesPage() {
     ]}
     formFields={[
       { key: 'code', label: t('sup_code', lang) },
-      { key: 'name', label: t('name', lang), required: true },
+      { key: 'name', label: t('name', lang), required: true, fullWidth: true },
       { key: 'category', label: t('category', lang) },
       { key: 'unit', label: t('inv_unit', lang), placeholder: 'pza, lt, kg...' },
       { key: 'stock', label: t('inv_stock', lang), type: 'number' },
       { key: 'reorder_point', label: t('sup_reorder_point', lang), type: 'number' },
-      { key: 'unit_cost', label: t('sup_unit_cost', lang), type: 'number' },
+      { key: 'unit_cost', label: t('sup_unit_cost', lang), type: 'number', icon: DollarSign },
     ]}
     createFn={(d) => api.createSupply(d)}
     updateFn={(id, d) => api.updateSupply(id, d)}
@@ -771,12 +880,12 @@ function SuppliersPage() {
       { key: 'status', label: t('status', lang), format: 'status' },
     ]}
     formFields={[
-      { key: 'company_name', label: t('spl_company', lang), required: true },
+      { key: 'company_name', label: t('spl_company', lang), required: true, fullWidth: true },
       { key: 'contact_name', label: t('spl_contact', lang) },
       { key: 'email', label: t('email', lang) },
       { key: 'phone', label: t('phone', lang) },
-      { key: 'address', label: t('address', lang) },
-      { key: 'city', label: t('spl_city', lang) },
+      { key: 'address', label: t('address', lang), fullWidth: true },
+      { key: 'city', label: t('spl_city', lang), icon: MapPin },
       { key: 'state', label: t('spl_state', lang) },
       { key: 'tax_id', label: t('spl_tax_id', lang) },
       { key: 'category', label: t('category', lang) },
@@ -809,12 +918,12 @@ function TravelPage() {
     ]}
     formFields={[
       { key: 'employee_id', label: lang === 'en' ? 'Employee ID' : 'ID Empleado', type: 'number', required: true },
-      { key: 'destination', label: t('trv_destination', lang), required: true },
+      { key: 'purpose', label: t('trv_purpose', lang), required: true, fullWidth: true },
       { key: 'origin', label: t('trv_origin', lang) },
-      { key: 'purpose', label: t('trv_purpose', lang), required: true },
-      { key: 'start_date', label: t('trv_start_date', lang), type: 'date', required: true },
-      { key: 'end_date', label: t('trv_end_date', lang), type: 'date', required: true },
-      { key: 'estimated_budget', label: t('trv_budget', lang), type: 'number' },
+      { key: 'destination', label: t('trv_destination', lang), required: true, icon: MapPin },
+      { key: 'start_date', label: t('trv_start_date', lang), type: 'date', required: true, icon: CalendarDays },
+      { key: 'end_date', label: t('trv_end_date', lang), type: 'date', required: true, icon: CalendarDays },
+      { key: 'estimated_budget', label: t('trv_budget', lang), type: 'number', icon: DollarSign },
       { key: 'transport_type', label: t('trv_transport', lang), type: 'select', options: [
         { value: 'flight', label: lang === 'en' ? 'Flight' : 'Avión' },
         { value: 'bus', label: lang === 'en' ? 'Bus' : 'Autobús' },
@@ -999,7 +1108,17 @@ function AppLayout({ user, lang, setLang, onLogout }) {
 export default function App() {
   const [user, setUser] = useState(null);
   const [lang, setLang] = useState('es');
+  const [theme, setTheme] = useState(localStorage.getItem('theme') || 'dark');
   const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    localStorage.setItem('theme', theme);
+    if (theme === 'light') {
+      document.body.classList.add('light-theme');
+    } else {
+      document.body.classList.remove('light-theme');
+    }
+  }, [theme]);
 
   useEffect(() => {
     const token = api.getToken();
@@ -1026,11 +1145,15 @@ export default function App() {
   return (
     <AuthContext.Provider value={{ user, setUser }}>
       <LangContext.Provider value={lang}>
-        <ToastProvider>
-          <BrowserRouter>
-            {user ? <AppLayout user={user} lang={lang} setLang={setLang} onLogout={handleLogout} /> : <LoginPage onLogin={handleLogin} />}
-          </BrowserRouter>
-        </ToastProvider>
+        <ThemeContext.Provider value={{ theme, setTheme }}>
+          <ToastProvider>
+            <ConfirmProvider>
+              <BrowserRouter>
+                {user ? <AppLayout user={user} lang={lang} setLang={setLang} onLogout={handleLogout} /> : <LoginPage onLogin={handleLogin} />}
+              </BrowserRouter>
+            </ConfirmProvider>
+          </ToastProvider>
+        </ThemeContext.Provider>
       </LangContext.Provider>
     </AuthContext.Provider>
   );

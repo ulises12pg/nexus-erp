@@ -151,14 +151,14 @@ router.get('/:module/:format', async (req, res) => {
 
       // Simple table
       const pageWidth = doc.page.width - 80;
-      const colWidth = pageWidth / Math.min(columns.length, 8);
+      const colWidth = pageWidth / columns.length;
       const startX = 40;
       let y = doc.y;
 
       // Header
       doc.fontSize(8).fillColor('#FFFFFF');
       doc.rect(startX, y, pageWidth, 18).fill('#6366F1');
-      columns.slice(0, 8).forEach((col, i) => {
+      columns.forEach((col, i) => {
         doc.fillColor('#FFFFFF').text(col.header, startX + i * colWidth + 4, y + 4, { width: colWidth - 8, lineBreak: false });
       });
       y += 20;
@@ -171,7 +171,7 @@ router.get('/:module/:format', async (req, res) => {
         }
         if (idx % 2 === 0) doc.rect(startX, y, pageWidth, 16).fill('#F3F4F6');
         doc.fontSize(7).fillColor('#333');
-        columns.slice(0, 8).forEach((col, i) => {
+        columns.forEach((col, i) => {
           const val = row[col.key] != null ? String(row[col.key]) : '';
           doc.text(val.substring(0, 30), startX + i * colWidth + 4, y + 3, { width: colWidth - 8, lineBreak: false });
         });

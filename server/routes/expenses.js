@@ -42,8 +42,20 @@ router.put('/:id', requireModule('expenses'), (req, res) => {
   try {
     const db = getDb();
     const { category_id, description, amount, date, department, payment_method, receipt_number, notes } = req.body;
-    db.prepare('UPDATE expenses SET category_id=COALESCE(?,category_id), description=COALESCE(?,description), amount=COALESCE(?,amount), date=COALESCE(?,date), department=COALESCE(?,department), payment_method=COALESCE(?,payment_method), receipt_number=COALESCE(?,receipt_number), notes=COALESCE(?,notes) WHERE id=? AND sector_id=?')
-      .run(category_id, description, amount, date, department, payment_method, receipt_number, notes, req.params.id, req.user.sector_id);
+    const sets = [];
+    const params = [];
+    if (category_id !== undefined) { sets.push('category_id=?'); params.push(category_id); }
+    if (description !== undefined) { sets.push('description=?'); params.push(description); }
+    if (amount !== undefined) { sets.push('amount=?'); params.push(amount); }
+    if (date !== undefined) { sets.push('date=?'); params.push(date); }
+    if (department !== undefined) { sets.push('department=?'); params.push(department); }
+    if (payment_method !== undefined) { sets.push('payment_method=?'); params.push(payment_method); }
+    if (receipt_number !== undefined) { sets.push('receipt_number=?'); params.push(receipt_number); }
+    if (notes !== undefined) { sets.push('notes=?'); params.push(notes); }
+    if (sets.length > 0) {
+      params.push(req.params.id, req.user.sector_id);
+      db.prepare(`UPDATE expenses SET ${sets.join(', ')} WHERE id=? AND sector_id=?`).run(...params);
+    }
     const expense = db.prepare('SELECT * FROM expenses WHERE id = ?').get(req.params.id);
     res.json(expense);
   } catch (err) { res.status(500).json({ error: err.message }); }
@@ -69,7 +81,7 @@ router.put('/:id/approve', requireModule('expenses'), (req, res) => {
 router.delete('/:id', requireModule('expenses'), (req, res) => {
   try {
     const db = getDb();
-    db.prepare('DELETE FROM expenses WHERE id = ? AND sector_id = ? AND status = "pending"').run(req.params.id, req.user.sector_id);
+    db.prepare('DELETE FROM expenses WHERE id = ? AND sector_id = ?').run(req.params.id, req.user.sector_id);
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });

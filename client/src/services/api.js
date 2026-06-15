@@ -125,7 +125,9 @@ class ApiService {
     const a = document.createElement('a');
     a.href = url;
     a.download = `${module}_report.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
   }
 }

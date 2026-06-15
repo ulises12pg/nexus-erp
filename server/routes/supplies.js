@@ -40,8 +40,19 @@ router.put('/:id', requireModule('supplies'), (req, res) => {
   try {
     const db = getDb();
     const { name, description, category, unit, reorder_point, preferred_supplier_id, unit_cost, specs, active } = req.body;
-    db.prepare('UPDATE supplies SET name=COALESCE(?,name), description=COALESCE(?,description), category=COALESCE(?,category), unit=COALESCE(?,unit), reorder_point=COALESCE(?,reorder_point), preferred_supplier_id=COALESCE(?,preferred_supplier_id), unit_cost=COALESCE(?,unit_cost), active=COALESCE(?,active), updated_at=datetime("now") WHERE id=? AND sector_id=?')
-      .run(name, description, category, unit, reorder_point, preferred_supplier_id, unit_cost, active, req.params.id, req.user.sector_id);
+    const sets = [];
+    const params = [];
+    if (name !== undefined) { sets.push('name=?'); params.push(name); }
+    if (description !== undefined) { sets.push('description=?'); params.push(description); }
+    if (category !== undefined) { sets.push('category=?'); params.push(category); }
+    if (unit !== undefined) { sets.push('unit=?'); params.push(unit); }
+    if (reorder_point !== undefined) { sets.push('reorder_point=?'); params.push(reorder_point); }
+    if (preferred_supplier_id !== undefined) { sets.push('preferred_supplier_id=?'); params.push(preferred_supplier_id); }
+    if (unit_cost !== undefined) { sets.push('unit_cost=?'); params.push(unit_cost); }
+    if (active !== undefined) { sets.push('active=?'); params.push(active); }
+    sets.push('updated_at=datetime("now")');
+    params.push(req.params.id, req.user.sector_id);
+    db.prepare(`UPDATE supplies SET ${sets.join(', ')} WHERE id=? AND sector_id=?`).run(...params);
     const supply = db.prepare('SELECT * FROM supplies WHERE id = ?').get(req.params.id);
     res.json(supply);
   } catch (err) { res.status(500).json({ error: err.message }); }

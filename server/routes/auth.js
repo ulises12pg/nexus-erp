@@ -110,8 +110,14 @@ router.put('/profile', (req, res) => {
   try {
     const { full_name, email, language } = req.body;
     const db = getDb();
-    db.prepare('UPDATE users SET full_name = COALESCE(?, full_name), email = COALESCE(?, email), language = COALESCE(?, language), updated_at = datetime("now") WHERE id = ?')
-      .run(full_name, email, language, req.user.id);
+    const sets = [];
+    const params = [];
+    if (full_name !== undefined) { sets.push('full_name=?'); params.push(full_name); }
+    if (email !== undefined) { sets.push('email=?'); params.push(email); }
+    if (language !== undefined) { sets.push('language=?'); params.push(language); }
+    sets.push('updated_at=datetime("now")');
+    params.push(req.user.id);
+    db.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id=?`).run(...params);
     const user = db.prepare('SELECT id, username, email, full_name, role, sector_id, language FROM users WHERE id = ?').get(req.user.id);
     res.json(user);
   } catch (err) {

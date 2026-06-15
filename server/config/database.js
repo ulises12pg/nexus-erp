@@ -12,6 +12,11 @@ const dbPath = path.join(dataDir, 'nexus.db');
 let db = null;
 let SQL = null;
 
+// Sanitize params: convert undefined to null for sql.js compatibility
+function sanitize(params) {
+  return params.map(p => p === undefined ? null : p);
+}
+
 // Wrapper to make sql.js API compatible with better-sqlite3 style
 class DbWrapper {
   constructor(sqlDb) {
@@ -22,38 +27,66 @@ class DbWrapper {
     const self = this;
     return {
       run(...params) {
-        self._db.run(sql, params);
-        const lastId = self._db.exec("SELECT last_insert_rowid() as id")[0];
+        const clean = sanitize(params);
+        try {
+          self._db.run(sql, clean);
+        } catch (e) {
+          console.error('DB run error:', e.message, '\nSQL:', sql, '\nParams:', clean);
+          throw e;
+        }
+        let lastId = 0;
+        try {
+          const r = self._db.exec("SELECT last_insert_rowid() as id");
+          if (r && r.length > 0 && r[0].values && r[0].values.length > 0) {
+            lastId = r[0].values[0][0];
+          }
+        } catch(e) { /* ignore */ }
         const changes = self._db.getRowsModified();
-        return { lastInsertRowid: lastId ? lastId.values[0][0] : 0, changes };
+        return { lastInsertRowid: lastId, changes };
       },
       get(...params) {
-        const stmt = self._db.prepare(sql);
-        stmt.bind(params);
-        if (stmt.step()) {
-          const cols = stmt.getColumnNames();
-          const vals = stmt.get();
+        const clean = sanitize(params);
+        let stmt;
+        try {
+          stmt = self._db.prepare(sql);
+          if (clean.length > 0) stmt.bind(clean);
+          if (stmt.step()) {
+            const cols = stmt.getColumnNames();
+            const vals = stmt.get();
+            stmt.free();
+            const row = {};
+            cols.forEach((c, i) => row[c] = vals[i]);
+            return row;
+          }
           stmt.free();
-          const row = {};
-          cols.forEach((c, i) => row[c] = vals[i]);
-          return row;
+          return undefined;
+        } catch (e) {
+          if (stmt) try { stmt.free(); } catch(_) {}
+          console.error('DB get error:', e.message, '\nSQL:', sql, '\nParams:', clean);
+          throw e;
         }
-        stmt.free();
-        return undefined;
       },
       all(...params) {
+        const clean = sanitize(params);
         const results = [];
-        const stmt = self._db.prepare(sql);
-        stmt.bind(params);
-        while (stmt.step()) {
-          const cols = stmt.getColumnNames();
-          const vals = stmt.get();
-          const row = {};
-          cols.forEach((c, i) => row[c] = vals[i]);
-          results.push(row);
+        let stmt;
+        try {
+          stmt = self._db.prepare(sql);
+          if (clean.length > 0) stmt.bind(clean);
+          while (stmt.step()) {
+            const cols = stmt.getColumnNames();
+            const vals = stmt.get();
+            const row = {};
+            cols.forEach((c, i) => row[c] = vals[i]);
+            results.push(row);
+          }
+          stmt.free();
+          return results;
+        } catch (e) {
+          if (stmt) try { stmt.free(); } catch(_) {}
+          console.error('DB all error:', e.message, '\nSQL:', sql, '\nParams:', clean);
+          throw e;
         }
-        stmt.free();
-        return results;
       }
     };
   }

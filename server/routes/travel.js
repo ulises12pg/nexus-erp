@@ -39,8 +39,21 @@ router.put('/requests/:id', requireModule('travel'), (req, res) => {
   try {
     const db = getDb();
     const { destination, origin, purpose, start_date, end_date, estimated_budget, transport_type, accommodation, notes } = req.body;
-    db.prepare('UPDATE travel_requests SET destination=COALESCE(?,destination), origin=COALESCE(?,origin), purpose=COALESCE(?,purpose), start_date=COALESCE(?,start_date), end_date=COALESCE(?,end_date), estimated_budget=COALESCE(?,estimated_budget), transport_type=COALESCE(?,transport_type), accommodation=COALESCE(?,accommodation), notes=COALESCE(?,notes) WHERE id=? AND sector_id=?')
-      .run(destination, origin, purpose, start_date, end_date, estimated_budget, transport_type, accommodation, notes, req.params.id, req.user.sector_id);
+    const sets = [];
+    const params = [];
+    if (destination !== undefined) { sets.push('destination=?'); params.push(destination); }
+    if (origin !== undefined) { sets.push('origin=?'); params.push(origin); }
+    if (purpose !== undefined) { sets.push('purpose=?'); params.push(purpose); }
+    if (start_date !== undefined) { sets.push('start_date=?'); params.push(start_date); }
+    if (end_date !== undefined) { sets.push('end_date=?'); params.push(end_date); }
+    if (estimated_budget !== undefined) { sets.push('estimated_budget=?'); params.push(estimated_budget); }
+    if (transport_type !== undefined) { sets.push('transport_type=?'); params.push(transport_type); }
+    if (accommodation !== undefined) { sets.push('accommodation=?'); params.push(accommodation); }
+    if (notes !== undefined) { sets.push('notes=?'); params.push(notes); }
+    if (sets.length > 0) {
+      params.push(req.params.id, req.user.sector_id);
+      db.prepare(`UPDATE travel_requests SET ${sets.join(', ')} WHERE id=? AND sector_id=?`).run(...params);
+    }
     const request = db.prepare('SELECT * FROM travel_requests WHERE id = ?').get(req.params.id);
     res.json(request);
   } catch (err) { res.status(500).json({ error: err.message }); }
