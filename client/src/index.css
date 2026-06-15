@@ -695,6 +695,10 @@ tbody tr:last-child td { border-bottom: none; }
   z-index: var(--z-header);
 }
 
+.light-theme .main-header {
+  background: rgb(6 10 20 / 16%);
+}
+
 .main-header .header-left { display: flex; align-items: center; gap: 16px; }
 .main-header .header-right { display: flex; align-items: center; gap: 12px; }
 
