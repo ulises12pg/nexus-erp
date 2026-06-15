@@ -58,7 +58,8 @@ export const translations = {
     nav_supplies: 'Insumos',
     nav_suppliers: 'Proveedores',
     nav_travel: 'Viajes',
-    nav_settings: 'Configuración',
+    nav_sales: 'Venta Directa',
+    settings: 'Configuración',
     nav_modules: 'MÓDULOS',
     nav_system: 'SISTEMA',
     nav_help: 'Ayuda',
@@ -177,6 +178,17 @@ export const translations = {
     trv_approve: 'Aprobar Solicitud',
     trv_expenses: 'Gastos de Viaje',
 
+    // Sales
+    sales_title: 'Venta Directa',
+    sales_cart: 'Carrito de Compra',
+    sales_checkout: 'Cobrar',
+    sales_payment_method: 'Método de Pago',
+    sales_total: 'Total',
+    sales_empty: 'El carrito está vacío',
+    sales_customer: 'Cliente (Opcional)',
+    sales_add_product: 'Añadir Producto',
+    sales_history: 'Historial de Ventas',
+
     // Settings
     set_title: 'Configuración',
     set_sector: 'Sector Empresarial',
@@ -242,11 +254,12 @@ export const translations = {
     nav_dashboard: 'Dashboard',
     nav_inventory: 'Inventory',
     nav_payroll: 'Payroll',
-    nav_expenses: 'Expenses',
+    nav_expenses: 'Operating Expenses',
     nav_supplies: 'Supplies',
     nav_suppliers: 'Suppliers',
     nav_travel: 'Travel',
-    nav_settings: 'Settings',
+    nav_sales: 'Direct Sales',
+    settings: 'Settings',
     nav_modules: 'MODULES',
     nav_system: 'SYSTEM',
     nav_help: 'Help',
@@ -364,6 +377,17 @@ export const translations = {
     trv_accommodation: 'Accommodation',
     trv_approve: 'Approve Request',
     trv_expenses: 'Travel Expenses',
+
+    // Sales
+    sales_title: 'Direct Sales',
+    sales_cart: 'Shopping Cart',
+    sales_checkout: 'Checkout',
+    sales_payment_method: 'Payment Method',
+    sales_total: 'Total',
+    sales_empty: 'Cart is empty',
+    sales_customer: 'Customer (Optional)',
+    sales_add_product: 'Add Product',
+    sales_history: 'Sales History',
 
     // Settings
     set_title: 'Settings',

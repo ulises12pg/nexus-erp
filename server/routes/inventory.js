@@ -54,7 +54,7 @@ router.post('/products', requireModule('inventory'), (req, res) => {
 router.put('/products/:id', requireModule('inventory'), (req, res) => {
   try {
     const db = getDb();
-    const { name, description, category_id, unit, min_stock, max_stock, cost_price, sale_price, location, custom_data, active } = req.body;
+    const { name, description, category_id, unit, stock, min_stock, max_stock, cost_price, sale_price, location, custom_data, active } = req.body;
     const sets = [];
     const params = [];
     if (name !== undefined) { sets.push('name=?'); params.push(name); }
@@ -68,9 +68,33 @@ router.put('/products/:id', requireModule('inventory'), (req, res) => {
     if (location !== undefined) { sets.push('location=?'); params.push(location); }
     if (custom_data !== undefined) { sets.push('custom_data=?'); params.push(JSON.stringify(custom_data)); }
     if (active !== undefined) { sets.push('active=?'); params.push(active); }
+
+    let stockChanged = false;
+    let oldStock = 0;
+    if (stock !== undefined) {
+      const current = db.prepare('SELECT stock FROM products WHERE id = ? AND sector_id = ?').get(req.params.id, req.user.sector_id);
+      if (current && current.stock !== stock) {
+        sets.push('stock=?'); params.push(stock);
+        stockChanged = true;
+        oldStock = current.stock;
+      }
+    }
+
     sets.push("updated_at=datetime('now')");
     params.push(req.params.id, req.user.sector_id);
-    db.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id=? AND sector_id=?`).run(...params);
+
+    const updateTx = db.transaction(() => {
+      db.prepare(`UPDATE products SET ${sets.join(', ')} WHERE id=? AND sector_id=?`).run(...params);
+      
+      if (stockChanged) {
+        const diff = stock - oldStock;
+        const type = diff > 0 ? 'entry' : 'exit';
+        db.prepare('INSERT INTO inventory_movements (product_id, sector_id, type, quantity, previous_stock, new_stock, reason, user_id) VALUES (?,?,?,?,?,?,?,?)')
+          .run(req.params.id, req.user.sector_id, type, Math.abs(diff), oldStock, stock, 'Ajuste manual (Edición)', req.user.id);
+      }
+    });
+    
+    updateTx();
 
     const product = db.prepare('SELECT * FROM products WHERE id = ?').get(req.params.id);
     res.json(product);

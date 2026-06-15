@@ -6,7 +6,7 @@ import {
   FileText, TrendingUp, TrendingDown, AlertTriangle, ArrowUpDown, Eye, Star, 
   ChevronDown, Menu, Globe, LogOut, ArrowRight, ArrowLeft, Box, Truck, Factory,
   Flame, HardHat, CalendarDays, Clock, MapPin, CheckCircle2, XCircle, BarChart3,
-  PieChart, Filter, RefreshCw, Send, CreditCard, Receipt, Sun, Moon
+  PieChart, Filter, RefreshCw, Send, CreditCard, Receipt, Sun, Moon, ShoppingCart
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell } from 'recharts';
 import api from './services/api.js';
@@ -237,6 +237,7 @@ function Sidebar({ user, lang, setLang, onLogout, activeModules }) {
     { path: '/supplies', icon: Wrench, label: t('nav_supplies', lang), key: 'supplies' },
     { path: '/suppliers', icon: Building2, label: t('nav_suppliers', lang), key: 'suppliers' },
     { path: '/travel', icon: Plane, label: t('nav_travel', lang), key: 'travel' },
+    { path: '/sales', icon: ShoppingCart, label: t('nav_sales', lang), key: 'sales' },
   ].filter(m => m.key === 'dashboard' || activeModules.includes(m.key));
 
   const initials = user?.full_name?.split(' ').map(w => w[0]).join('').substring(0, 2).toUpperCase() || 'U';
@@ -694,6 +695,16 @@ function PayrollPage() {
   const viewDetails = async (periodId) => {
     try { const d = await api.getPayrollDetails(periodId); setDetails(d); setDetailsModal(true); } catch(e) { toast(e.message, 'error'); }
   };
+  const deleteEmployee = async (id) => {
+    if (window.confirm(lang === 'en' ? 'Are you sure you want to delete this employee?' : '¿Estás seguro de que deseas eliminar a este empleado?')) {
+      try { await api.deleteEmployee(id); toast(lang === 'en' ? 'Employee deleted!' : '¡Empleado eliminado!'); load(); } catch(e) { toast(e.message, 'error'); }
+    }
+  };
+  const deletePeriod = async (id) => {
+    if (window.confirm(lang === 'en' ? 'Are you sure you want to delete this payroll period? This will also delete all calculated details.' : '¿Estás seguro de que deseas eliminar este período de nómina? Esto también eliminará todos los detalles calculados.')) {
+      try { await api.deletePayrollPeriod(id); toast(lang === 'en' ? 'Payroll period deleted!' : '¡Período de nómina eliminado!'); load(); } catch(e) { toast(e.message, 'error'); }
+    }
+  };
 
   return (
     <>
@@ -721,7 +732,12 @@ function PayrollPage() {
               <tbody>
                 {employees.map(e => (
                   <tr key={e.id}><td><span className="badge badge-neutral">{e.employee_code}</span></td><td style={{fontWeight:600}}>{e.full_name}</td><td>{e.position}</td><td>{e.department}</td><td>{fmt(e.base_salary)}</td><td>{fmtDate(e.hire_date)}</td>
-                  <td><button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEditEmployee(e)}><Edit3 size={14}/></button></td></tr>
+                  <td>
+                    <div style={{display:'flex',gap:4}}>
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEditEmployee(e)}><Edit3 size={14}/></button>
+                      <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', padding: '0 8px'}} onClick={() => deleteEmployee(e.id)}><Trash2 size={14}/> Eliminar</button>
+                    </div>
+                  </td></tr>
                 ))}
               </tbody>
             </table>
@@ -741,6 +757,7 @@ function PayrollPage() {
                       <button className="btn btn-ghost btn-sm" onClick={() => viewDetails(p.id)}><Eye size={14}/></button>
                     </>}
                     {p.status === 'closed' && <button className="btn btn-ghost btn-sm" onClick={() => viewDetails(p.id)}><Eye size={14}/></button>}
+                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => deletePeriod(p.id)}><Trash2 size={14}/> Eliminar</button>
                   </div></td></tr>
                 ))}
               </tbody>
@@ -975,6 +992,7 @@ function SettingsPage() {
     { key: 'supplies', label: t('nav_supplies', lang), icon: '🔧' },
     { key: 'suppliers', label: t('nav_suppliers', lang), icon: '🏢' },
     { key: 'travel', label: t('nav_travel', lang), icon: '✈️' },
+    { key: 'sales', label: t('nav_sales', lang), icon: '🛒' },
   ];
 
   const toggleModule = async (moduleKey) => {
@@ -1072,6 +1090,152 @@ function SettingsPage() {
 }
 
 // ==============================
+// DIRECT SALES
+// ==============================
+function DirectSalesPage() {
+  const lang = useLang();
+  const toast = useToast();
+  const [products, setProducts] = useState([]);
+  const [cart, setCart] = useState([]);
+  const [search, setSearch] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [customer, setCustomer] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const loadProducts = useCallback(async () => {
+    try {
+      const res = await api.getProducts();
+      setProducts(res.data || []);
+    } catch(e) { toast(e.message, 'error'); }
+  }, [toast]);
+
+  useEffect(() => { loadProducts(); }, [loadProducts]);
+
+  const addToCart = (prod) => {
+    if (prod.stock <= 0) return toast(lang === 'en' ? 'Out of stock!' : '¡Sin stock!', 'warning');
+    const existing = cart.find(i => i.id === prod.id);
+    if (existing) {
+      if (existing.quantity >= prod.stock) return toast(lang === 'en' ? 'Not enough stock!' : '¡Stock insuficiente!', 'warning');
+      setCart(cart.map(i => i.id === prod.id ? { ...i, quantity: i.quantity + 1 } : i));
+    } else {
+      setCart([...cart, { ...prod, quantity: 1 }]);
+    }
+  };
+
+  const removeFromCart = (id) => setCart(cart.filter(i => i.id !== id));
+  
+  const updateQuantity = (id, qty) => {
+    if (qty <= 0) return removeFromCart(id);
+    const prod = products.find(p => p.id === id);
+    if (prod && qty > prod.stock) return toast(lang === 'en' ? 'Not enough stock!' : '¡Stock insuficiente!', 'warning');
+    setCart(cart.map(i => i.id === id ? { ...i, quantity: qty } : i));
+  };
+
+  const total = cart.reduce((sum, item) => sum + (item.sale_price * item.quantity), 0);
+
+  const handleCheckout = async () => {
+    if (cart.length === 0) return;
+    setLoading(true);
+    try {
+      await api.createSale({
+        items: cart.map(i => ({ product_id: i.id, quantity: i.quantity, price: i.sale_price })),
+        payment_method: paymentMethod,
+        customer_name: customer,
+        total
+      });
+      toast(lang === 'en' ? 'Sale completed successfully!' : '¡Venta completada con éxito!');
+      setCart([]);
+      setCustomer('');
+      loadProducts();
+    } catch(e) { toast(e.message, 'error'); }
+    setLoading(false);
+  };
+
+  const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()));
+
+  return (
+    <>
+      <Header title={t('sales_title', lang)} lang={lang} />
+      <div className="page-content" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
+        
+        {/* Products Section */}
+        <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{t('inv_products', lang)}</h2>
+            <div className="form-input-group" style={{ width: 300 }}>
+              <Search size={16} className="input-icon" />
+              <input className="form-input" placeholder={t('search', lang)} value={search} onChange={e => setSearch(e.target.value)} />
+            </div>
+          </div>
+          
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, maxHeight: '65vh', overflow: 'auto', paddingRight: 8 }}>
+            {filteredProducts.map(p => (
+              <div key={p.id} className="glass-card" style={{ padding: 16, cursor: p.stock > 0 ? 'pointer' : 'not-allowed', opacity: p.stock > 0 ? 1 : 0.6, display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border-color)', transition: 'transform 0.2s, box-shadow 0.2s' }} onClick={() => p.stock > 0 && addToCart(p)} onMouseEnter={e => e.currentTarget.style.transform = p.stock > 0 ? 'translateY(-2px)' : 'none'} onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>{p.sku}</div>
+                <div style={{ fontWeight: 600, lineHeight: 1.2 }}>{p.name}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                  <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{fmt(p.sale_price)}</div>
+                  <div style={{ fontSize: '0.8rem', color: p.stock > 0 ? 'var(--text-secondary)' : 'var(--danger)' }}>Stock: {p.stock}</div>
+                </div>
+              </div>
+            ))}
+            {filteredProducts.length === 0 && <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>{t('no_results', lang)}</div>}
+          </div>
+        </div>
+
+        {/* Cart Section */}
+        <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 100 }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}><ShoppingCart size={20} /> {t('sales_cart', lang)}</h2>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '40vh', overflow: 'auto' }}>
+            {cart.length === 0 ? <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-tertiary)' }}>{t('sales_empty', lang)}</div> : 
+             cart.map(item => (
+              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</div>
+                  <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>{fmt(item.sale_price)} x {item.quantity} = {fmt(item.sale_price * item.quantity)}</div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
+                  <span style={{ width: 20, textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
+                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', padding: 4 }} onClick={() => removeFromCart(item.id)}><X size={14}/></button>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: 16, marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div className="form-group">
+              <label className="form-label">{t('sales_customer', lang)}</label>
+              <input className="form-input" value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Ej. Juan Pérez" />
+            </div>
+            
+            <div className="form-group">
+              <label className="form-label">{t('sales_payment_method', lang)}</label>
+              <select className="form-input" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                <option value="cash">{lang === 'en' ? 'Cash' : 'Efectivo'}</option>
+                <option value="card">{lang === 'en' ? 'Credit/Debit Card' : 'Tarjeta'}</option>
+                <option value="transfer">{lang === 'en' ? 'Transfer' : 'Transferencia'}</option>
+              </select>
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.25rem', fontWeight: 700 }}>
+              <span>{t('sales_total', lang)}:</span>
+              <span style={{ color: 'var(--primary)' }}>{fmt(total)}</span>
+            </div>
+            
+            <button className="btn btn-primary" style={{ width: '100%', padding: 12, fontSize: '1.1rem' }} onClick={handleCheckout} disabled={cart.length === 0 || loading}>
+              {loading ? <span className="loading-spinner"/> : <ShoppingCart size={20} />} {t('sales_checkout', lang)}
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}
+
+// ==============================
 // MAIN APP
 // ==============================
 function AppLayout({ user, lang, setLang, onLogout }) {
@@ -1097,6 +1261,7 @@ function AppLayout({ user, lang, setLang, onLogout }) {
           {activeModules.includes('supplies') && <Route path="/supplies" element={<SuppliesPage />} />}
           {activeModules.includes('suppliers') && <Route path="/suppliers" element={<SuppliersPage />} />}
           {activeModules.includes('travel') && <Route path="/travel" element={<TravelPage />} />}
+          {activeModules.includes('sales') && <Route path="/sales" element={<DirectSalesPage />} />}
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

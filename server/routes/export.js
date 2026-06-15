@@ -87,7 +87,7 @@ router.get('/:module/:format', async (req, res) => {
           { header: 'Stock', key: 'stock', width: 10 },
           { header: 'Unidad', key: 'unit', width: 10 },
           { header: 'Punto Reorden', key: 'reorder_point', width: 15 },
-          { header: 'Costo Unit.', key: 'unit_cost', width: 12 },
+          { header: 'Costo Costo.', key: 'unit_cost', width: 12 },
           { header: 'Proveedor', key: 'supplier', width: 25 }
         ];
         title = 'Reporte de Insumos';
@@ -118,65 +118,244 @@ router.get('/:module/:format', async (req, res) => {
       workbook.creator = 'NEXUS ERP';
       workbook.created = new Date();
       const worksheet = workbook.addWorksheet(title);
-      worksheet.columns = columns;
 
-      // Header styling
-      worksheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
-      worksheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6366F1' } };
-      worksheet.getRow(1).alignment = { horizontal: 'center' };
+      // Ensure gridlines are visible
+      worksheet.views = [{ showGridLines: true }];
 
-      data.forEach(row => worksheet.addRow(row));
-
-      // Alternating row colors
-      for (let i = 2; i <= data.length + 1; i++) {
-        if (i % 2 === 0) {
-          worksheet.getRow(i).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+      worksheet.columns = columns.map(col => ({
+        ...col,
+        style: {
+          font: { name: 'Arial', size: 10 },
+          alignment: { vertical: 'middle' }
         }
-      }
+      }));
+
+      // Add Title row
+      worksheet.mergeCells('A1:' + String.fromCharCode(64 + columns.length) + '1');
+      const titleRow = worksheet.getRow(1);
+      titleRow.height = 35;
+      const titleCell = titleRow.getCell(1);
+      titleCell.value = title.toUpperCase();
+      titleCell.font = { name: 'Arial', size: 16, bold: true, color: { argb: 'FFFFFFFF' } };
+      titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002147' } }; // Dark Corporate Blue
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      // Add Metadata row
+      worksheet.mergeCells('A2:' + String.fromCharCode(64 + columns.length) + '2');
+      const metaRow = worksheet.getRow(2);
+      metaRow.height = 20;
+      const metaCell = metaRow.getCell(1);
+      metaCell.value = `Generado el: ${new Date().toLocaleDateString('es-MX')} a las ${new Date().toLocaleTimeString('es-MX')} | NEXUS ERP`;
+      metaCell.font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF64748B' } };
+      metaCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+      metaCell.alignment = { horizontal: 'center', vertical: 'middle' };
+
+      // Spacer
+      worksheet.addRow([]);
+      worksheet.getRow(3).height = 10;
+
+      // Table Headers
+      const headerRow = worksheet.getRow(4);
+      headerRow.height = 30;
+      columns.forEach((col, idx) => {
+        const cell = headerRow.getCell(idx + 1);
+        cell.value = col.header.toUpperCase();
+        cell.font = { name: 'Arial', size: 10, bold: true, color: { argb: 'FFFFFFFF' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF003366' } }; // Secondary Corporate Blue
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = {
+          top: { style: 'thin', color: { argb: 'FF002147' } },
+          left: { style: 'thin', color: { argb: 'FF002147' } },
+          bottom: { style: 'medium', color: { argb: 'FF000000' } },
+          right: { style: 'thin', color: { argb: 'FF002147' } }
+        };
+      });
+
+      // Data Rows
+      data.forEach((row, rowIndex) => {
+        const newRow = worksheet.addRow(row);
+        newRow.height = 20;
+
+        columns.forEach((col, colIdx) => {
+          const cell = newRow.getCell(colIdx + 1);
+          
+          cell.border = {
+            top: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            left: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            bottom: { style: 'thin', color: { argb: 'FFE2E8F0' } },
+            right: { style: 'thin', color: { argb: 'FFE2E8F0' } }
+          };
+
+          const isNumeric = ['stock', 'min_stock', 'max_stock', 'rating', 'reorder_point'].includes(col.key);
+          const isCurrency = ['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost'].includes(col.key);
+
+          if (isNumeric) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.numFmt = '#,##0';
+          } else if (isCurrency) {
+            cell.alignment = { horizontal: 'right', vertical: 'middle' };
+            cell.numFmt = '$#,##0.00';
+          } else if (['sku', 'employee_code', 'code', 'date', 'hire_date', 'start_date', 'end_date', 'status'].includes(col.key)) {
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+          } else {
+            cell.alignment = { horizontal: 'left', vertical: 'middle' };
+          }
+
+          if (rowIndex % 2 === 1) {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF8FAFC' } };
+          }
+        });
+      });
+
+      // Auto-fit Columns
+      columns.forEach((col, colIdx) => {
+        let maxLen = col.header.length;
+        data.forEach(row => {
+          const val = row[col.key];
+          if (val != null) {
+            let formatted = String(val);
+            if (['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost'].includes(col.key)) {
+              formatted = `$${Number(val).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+            }
+            if (formatted.length > maxLen) maxLen = formatted.length;
+          }
+        });
+        worksheet.getColumn(colIdx + 1).width = Math.min(Math.max(maxLen + 4, col.width || 12), 40);
+      });
 
       res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
       res.setHeader('Content-Disposition', `attachment; filename=${module}_report.xlsx`);
       await workbook.xlsx.write(res);
       res.end();
     } else if (format === 'pdf') {
-      const doc = new PDFDocument({ margin: 40, size: 'letter', layout: 'landscape' });
+      const doc = new PDFDocument({ margin: 40, size: 'letter', layout: 'landscape', bufferPages: true });
       res.setHeader('Content-Type', 'application/pdf');
       res.setHeader('Content-Disposition', `attachment; filename=${module}_report.pdf`);
       doc.pipe(res);
 
-      // Title
-      doc.fontSize(18).fillColor('#6366F1').text(title, { align: 'center' });
-      doc.fontSize(10).fillColor('#666').text(`Generado: ${new Date().toLocaleDateString('es-MX')}`, { align: 'center' });
-      doc.moveDown(1);
-
-      // Simple table
       const pageWidth = doc.page.width - 80;
-      const colWidth = pageWidth / columns.length;
       const startX = 40;
-      let y = doc.y;
 
-      // Header
-      doc.fontSize(8).fillColor('#FFFFFF');
-      doc.rect(startX, y, pageWidth, 18).fill('#6366F1');
-      columns.forEach((col, i) => {
-        doc.fillColor('#FFFFFF').text(col.header, startX + i * colWidth + 4, y + 4, { width: colWidth - 8, lineBreak: false });
-      });
-      y += 20;
+      let colWidths = {};
+      switch (module) {
+        case 'inventory':
+          colWidths = { sku: 0.10, name: 0.25, category: 0.15, stock: 0.08, unit: 0.08, cost_price: 0.11, sale_price: 0.11, min_stock: 0.06, max_stock: 0.06 };
+          break;
+        case 'employees':
+          colWidths = { employee_code: 0.10, full_name: 0.22, position: 0.16, department: 0.14, base_salary: 0.11, hire_date: 0.10, email: 0.17 };
+          break;
+        case 'expenses':
+          colWidths = { date: 0.10, description: 0.22, category: 0.14, amount: 0.11, department: 0.12, payment_method: 0.11, status: 0.10, submitted_by: 0.10 };
+          break;
+        case 'suppliers':
+          colWidths = { company_name: 0.20, contact_name: 0.15, email: 0.18, phone: 0.11, city: 0.10, state: 0.08, category: 0.08, rating: 0.05, status: 0.05 };
+          break;
+        case 'supplies':
+          colWidths = { code: 0.10, name: 0.24, category: 0.14, stock: 0.08, unit: 0.08, reorder_point: 0.10, unit_cost: 0.10, supplier: 0.16 };
+          break;
+        case 'travel':
+          colWidths = { employee: 0.15, destination: 0.13, origin: 0.10, purpose: 0.18, start_date: 0.09, end_date: 0.09, estimated_budget: 0.09, actual_cost: 0.09, status: 0.08 };
+          break;
+        default:
+          colWidths = {};
+          columns.forEach(col => colWidths[col.key] = 1 / columns.length);
+      }
 
-      // Rows
-      data.forEach((row, idx) => {
-        if (y > doc.page.height - 60) {
-          doc.addPage();
-          y = 40;
-        }
-        if (idx % 2 === 0) doc.rect(startX, y, pageWidth, 16).fill('#F3F4F6');
-        doc.fontSize(7).fillColor('#333');
-        columns.forEach((col, i) => {
-          const val = row[col.key] != null ? String(row[col.key]) : '';
-          doc.text(val.substring(0, 30), startX + i * colWidth + 4, y + 3, { width: colWidth - 8, lineBreak: false });
+      const drawHeader = () => {
+        doc.rect(0, 0, doc.page.width, 60).fill('#002147'); // Corporate Blue Header Band
+        doc.fontSize(18).fillColor('#FFFFFF').text('NEXUS ERP', startX, 20, { bold: true });
+        doc.fontSize(14).fillColor('#E2E8F0').text(title.toUpperCase(), startX + 150, 22, { bold: true });
+        doc.fontSize(9).fillColor('#CBD5E1').text(`Fecha: ${new Date().toLocaleDateString('es-MX')}  |  Reporte Oficial`, doc.page.width - startX - 250, 25, { align: 'right', width: 250 });
+      };
+
+      drawHeader();
+
+      let y = 80;
+
+      const drawTableHeader = (startY) => {
+        doc.fontSize(8).fillColor('#FFFFFF');
+        doc.rect(startX, startY, pageWidth, 22).fill('#003366'); // Secondary Corporate Blue
+        
+        let currentX = startX;
+        columns.forEach(col => {
+          const w = (colWidths[col.key] || (1 / columns.length)) * pageWidth;
+          doc.fillColor('#FFFFFF').text(
+            col.header.toUpperCase(), 
+            currentX + 4, 
+            startY + 7, 
+            { width: w - 8, align: 'center', lineBreak: false }
+          );
+          currentX += w;
         });
-        y += 16;
+        return startY + 22;
+      };
+
+      y = drawTableHeader(y);
+
+      data.forEach((row, idx) => {
+        if (y > doc.page.height - 70) {
+          doc.addPage();
+          drawHeader();
+          y = drawTableHeader(80);
+        }
+
+        if (idx % 2 === 0) {
+          doc.rect(startX, y, pageWidth, 20).fill('#F8FAFC');
+        }
+
+        doc.moveTo(startX, y + 20).lineTo(startX + pageWidth, y + 20).strokeColor('#E2E8F0').lineWidth(0.5).stroke();
+
+        doc.fontSize(7.5).fillColor('#334155');
+        let currentX = startX;
+        columns.forEach(col => {
+          const w = (colWidths[col.key] || (1 / columns.length)) * pageWidth;
+          let val = row[col.key] != null ? String(row[col.key]) : '';
+          
+          const isCurrency = ['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost'].includes(col.key);
+          const isNumeric = ['stock', 'min_stock', 'max_stock', 'rating', 'reorder_point'].includes(col.key);
+          
+          if (isCurrency && val !== '') {
+            val = `$${Number(val).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
+          } else if (isNumeric && val !== '') {
+            val = Number(val).toLocaleString('es-MX');
+          } else if (col.key === 'date' || col.key === 'hire_date' || col.key === 'start_date' || col.key === 'end_date') {
+            try {
+              if (val) {
+                const d = new Date(val);
+                if (!isNaN(d.getTime())) {
+                  val = d.toLocaleDateString('es-MX');
+                }
+              }
+            } catch(e) {}
+          }
+
+          let align = 'left';
+          if (isCurrency || isNumeric) align = 'right';
+          else if (['sku', 'employee_code', 'code', 'date', 'hire_date', 'start_date', 'end_date', 'status'].includes(col.key)) align = 'center';
+
+          doc.text(
+            val, 
+            currentX + 4, 
+            y + 6, 
+            { width: w - 8, align: align, lineBreak: false }
+          );
+          currentX += w;
+        });
+
+        y += 20;
       });
+
+      const range = doc.bufferedPageRange();
+      for (let i = range.start; i < range.start + range.count; i++) {
+        doc.switchToPage(i);
+        doc.moveTo(startX, doc.page.height - 40).lineTo(startX + pageWidth, doc.page.height - 40).strokeColor('#002147').lineWidth(1).stroke();
+        doc.fontSize(8).fillColor('#002147').text(
+          `Página ${i + 1} de ${range.count} | NEXUS ERP — Reporte Oficial`, 
+          startX, 
+          doc.page.height - 30, 
+          { align: 'center', width: pageWidth }
+        );
+      }
 
       doc.end();
     } else {

@@ -19,6 +19,7 @@ import travelRoutes from './routes/travel.js';
 import settingsRoutes from './routes/settings.js';
 import dashboardRoutes from './routes/dashboard.js';
 import exportRoutes from './routes/export.js';
+import salesRoutes from './routes/sales.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -61,6 +62,7 @@ app.use('/api/travel', authMiddleware, travelRoutes);
 app.use('/api/settings', authMiddleware, settingsRoutes);
 app.use('/api/dashboard', authMiddleware, dashboardRoutes);
 app.use('/api/export', authMiddleware, exportRoutes);
+app.use('/api/sales', authMiddleware, salesRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

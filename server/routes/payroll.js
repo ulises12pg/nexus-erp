@@ -148,4 +148,26 @@ router.get('/periods/:id/details', requireModule('payroll'), (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
+// DELETE /api/payroll/employees/:id
+router.delete('/employees/:id', requireModule('payroll'), (req, res) => {
+  try {
+    const db = getDb();
+    db.prepare('DELETE FROM employees WHERE id = ? AND sector_id = ?').run(req.params.id, req.user.sector_id);
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// DELETE /api/payroll/periods/:id
+router.delete('/periods/:id', requireModule('payroll'), (req, res) => {
+  try {
+    const db = getDb();
+    const deletePeriod = db.transaction(() => {
+      db.prepare('DELETE FROM payroll_details WHERE period_id = ?').run(req.params.id);
+      db.prepare('DELETE FROM payroll_periods WHERE id = ? AND sector_id = ?').run(req.params.id, req.user.sector_id);
+    });
+    deletePeriod();
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 export default router;

@@ -170,7 +170,7 @@ export async function initDatabase() {
       slug TEXT UNIQUE NOT NULL,
       description TEXT,
       icon TEXT DEFAULT 'building',
-      active_modules TEXT DEFAULT '["inventory","payroll","expenses","supplies","suppliers","travel"]',
+      active_modules TEXT DEFAULT '["inventory","payroll","expenses","supplies","suppliers","travel","sales"]',
       config TEXT DEFAULT '{}',
       created_at TEXT DEFAULT (datetime('now'))
     );
@@ -288,6 +288,26 @@ export async function initDatabase() {
       gross_pay REAL DEFAULT 0,
       total_deductions REAL DEFAULT 0,
       net_pay REAL DEFAULT 0
+    );
+
+    CREATE TABLE IF NOT EXISTS direct_sales (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sector_id INTEGER NOT NULL,
+      total REAL NOT NULL DEFAULT 0,
+      payment_method TEXT DEFAULT 'cash',
+      status TEXT DEFAULT 'completed',
+      customer_name TEXT,
+      created_by INTEGER,
+      created_at TEXT DEFAULT (datetime('now'))
+    );
+
+    CREATE TABLE IF NOT EXISTS direct_sale_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      sale_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      quantity REAL NOT NULL,
+      unit_price REAL NOT NULL,
+      subtotal REAL NOT NULL
     );
 
     CREATE TABLE IF NOT EXISTS expense_categories (

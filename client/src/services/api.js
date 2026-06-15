@@ -31,7 +31,7 @@ class ApiService {
 
     // Handle file downloads
     const contentType = response.headers.get('content-type');
-    if (contentType && (contentType.includes('spreadsheet') || contentType.includes('pdf'))) {
+    if (path.includes('/export/') || (contentType && (contentType.includes('spreadsheet') || contentType.includes('pdf')))) {
       return response.blob();
     }
 
@@ -69,8 +69,10 @@ class ApiService {
   getEmployees(params = '') { return this.get(`/payroll/employees${params ? '?' + params : ''}`); }
   createEmployee(data) { return this.post('/payroll/employees', data); }
   updateEmployee(id, data) { return this.put(`/payroll/employees/${id}`, data); }
+  deleteEmployee(id) { return this.delete(`/payroll/employees/${id}`); }
   getPayrollPeriods(params = '') { return this.get(`/payroll/periods${params ? '?' + params : ''}`); }
   createPayrollPeriod(data) { return this.post('/payroll/periods', data); }
+  deletePayrollPeriod(id) { return this.delete(`/payroll/periods/${id}`); }
   calculatePayroll(period_id) { return this.post('/payroll/calculate', { period_id }); }
   closePayroll(id) { return this.put(`/payroll/periods/${id}/close`); }
   getPayrollDetails(id) { return this.get(`/payroll/periods/${id}/details`); }
@@ -120,16 +122,33 @@ class ApiService {
 
   // Export
   async exportData(module, format) {
-    const blob = await this.request(`/export/${module}/${format}`);
+    const responseData = await this.request(`/export/${module}/${format}`);
+    
+    // Explicitly set MIME type
+    const mimeType = format === 'excel' 
+      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+      : 'application/pdf';
+      
+    const blob = new Blob([responseData], { type: mimeType });
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
+    a.style.display = 'none';
     a.href = url;
     a.download = `${module}_report.${format === 'excel' ? 'xlsx' : 'pdf'}`;
     document.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    window.URL.revokeObjectURL(url);
+    
+    // Delay revocation to ensure download works correctly on all browsers
+    setTimeout(() => {
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    }, 500);
   }
+
+  // Direct Sales
+  getSales(params = '') { return this.get(`/sales${params ? '?' + params : ''}`); }
+  getSale(id) { return this.get(`/sales/${id}`); }
+  createSale(data) { return this.post('/sales', data); }
 }
 
 const api = new ApiService();
