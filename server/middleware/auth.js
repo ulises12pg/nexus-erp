@@ -12,12 +12,21 @@ export function generateToken(user) {
 }
 
 export function authMiddleware(req, res, next) {
+  // Accept token from Authorization header OR from ?token= query param
+  // (query param is needed for direct browser downloads that bypass the Vite proxy)
   const authHeader = req.headers.authorization;
-  if (!authHeader || !authHeader.startsWith('Bearer ')) {
+  let token = null;
+
+  if (authHeader && authHeader.startsWith('Bearer ')) {
+    token = authHeader.split(' ')[1];
+  } else if (req.query && req.query.token) {
+    token = req.query.token;
+  }
+
+  if (!token) {
     return res.status(401).json({ error: 'Access denied. No token provided.' });
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, JWT_SECRET);
     req.user = decoded;

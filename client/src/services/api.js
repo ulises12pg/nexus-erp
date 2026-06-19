@@ -126,29 +126,23 @@ class ApiService {
   createCustomField(data) { return this.post('/settings/custom-fields', data); }
   getAuditLog(params = '') { return this.get(`/settings/audit-log${params ? '?' + params : ''}`); }
 
-  // Export
-  async exportData(module, format) {
-    const { blob, disposition } = await this.request(`/export/${module}/${format}`);
-
-    // Extract filename from Content-Disposition header, or build a fallback
-    let filename = `NEXUS_${module}_${new Date().toISOString().slice(0, 10)}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
-    if (disposition) {
-      const match = disposition.match(/filename="?([^"]+)"?/);
-      if (match && match[1]) filename = match[1];
-    }
-
-    const url = window.URL.createObjectURL(blob);
+  // Export — direct browser download (bypasses Vite proxy to preserve Content-Disposition / MIME type)
+  exportData(module, format) {
+    const token = this.getToken();
+    const ext = format === 'excel' ? 'xlsx' : 'pdf';
+    // Build a direct URL to the backend (port 3001), passing JWT as query param.
+    // This lets the browser handle the file download natively — no fetch/blob needed,
+    // which means the OS sees the correct Content-Type + filename with extension.
+    const backendUrl = `http://localhost:3001/api/export/${module}/${format}?token=${encodeURIComponent(token)}`;
     const a = document.createElement('a');
     a.style.display = 'none';
-    a.href = url;
-    a.download = filename;
+    a.href = backendUrl;
+    a.download = `NEXUS_${module}_${new Date().toISOString().slice(0, 10)}.${ext}`;
     document.body.appendChild(a);
     a.click();
-
-    setTimeout(() => {
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
-    }, 1000);
+    setTimeout(() => document.body.removeChild(a), 500);
+    // Return resolved promise so callers can await and show success toast
+    return Promise.resolve();
   }
 
   // Direct Sales
