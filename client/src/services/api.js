@@ -34,10 +34,12 @@ class ApiService {
       throw new Error(data.error || 'Request failed');
     }
 
-    // Handle file downloads
+    // Handle file downloads — return both blob and headers
     const contentType = response.headers.get('content-type');
     if (path.includes('/export/') || (contentType && (contentType.includes('spreadsheet') || contentType.includes('pdf')))) {
-      return response.blob();
+      const blob = await response.blob();
+      const disposition = response.headers.get('content-disposition') || '';
+      return { blob, disposition };
     }
 
     const data = await response.json();
@@ -126,21 +128,27 @@ class ApiService {
 
   // Export
   async exportData(module, format) {
-    const responseData = await this.request(`/export/${module}/${format}`);
-    
-    const url = window.URL.createObjectURL(responseData);
+    const { blob, disposition } = await this.request(`/export/${module}/${format}`);
+
+    // Extract filename from Content-Disposition header, or build a fallback
+    let filename = `NEXUS_${module}_${new Date().toISOString().slice(0, 10)}.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+    if (disposition) {
+      const match = disposition.match(/filename="?([^"]+)"?/);
+      if (match && match[1]) filename = match[1];
+    }
+
+    const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.style.display = 'none';
     a.href = url;
-    a.download = `${module}_report.${format === 'excel' ? 'xlsx' : 'pdf'}`;
+    a.download = filename;
     document.body.appendChild(a);
     a.click();
-    
-    // Delay revocation to ensure download works correctly on all browsers
+
     setTimeout(() => {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    }, 500);
+    }, 1000);
   }
 
   // Direct Sales

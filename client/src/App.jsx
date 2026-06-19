@@ -414,7 +414,7 @@ function Header({ title, breadcrumb, lang }) {
 // ==============================
 const CHART_COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#10b981', '#f59e0b', '#ef4444', '#3b82f6', '#ec4899'];
 
-function DashboardPage() {
+function DashboardPage({ activeModules = [] }) {
   const { user } = useAuth();
   const lang = useLang();
   const [stats, setStats] = useState(null);
@@ -429,6 +429,7 @@ function DashboardPage() {
   const cards = [
     { label: t('dash_total_products', lang), value: fmtNum(s.inventory?.total_products), icon: Package, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
     { label: t('dash_inventory_value', lang), value: fmt(s.inventory?.total_value), icon: TrendingUp, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    ...(activeModules.includes('sales') ? [{ label: t('dash_monthly_sales', lang), value: fmt(s.sales?.total_sales), icon: ShoppingCart, color: '#10b981', bg: 'rgba(16,185,129,0.15)' }] : []),
     { label: t('dash_employees', lang), value: fmtNum(s.employees?.total_employees), icon: Users, color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)' },
     { label: t('dash_monthly_expenses', lang), value: fmt(s.expenses?.total_expenses), icon: DollarSign, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
     { label: t('dash_active_suppliers', lang), value: fmtNum(s.suppliers?.active_count), icon: Building2, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
@@ -461,20 +462,43 @@ function DashboardPage() {
 
         <div className="grid-2" style={{ marginBottom: 24 }}>
           <div className="glass-card" style={{ padding: 24 }}>
-            <h3 style={{ marginBottom: 16 }}>{t('dash_expense_trend', lang)}</h3>
+            <h3 style={{ marginBottom: 16 }}>{activeModules.includes('sales') ? t('dash_sales_trend', lang) : t('dash_expense_trend', lang)}</h3>
             <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={s.expenseTrend || []}>
+              <BarChart data={activeModules.includes('sales') ? (() => {
+                const months = Array.from(new Set([
+                  ...(s.expenseTrend || []).map(e => e.month),
+                  ...(s.salesTrend || []).map(e => e.month)
+                ])).sort();
+                return months.map(m => {
+                  const exp = (s.expenseTrend || []).find(e => e.month === m);
+                  const sal = (s.salesTrend || []).find(e => e.month === m);
+                  return {
+                    month: m,
+                    [lang === 'en' ? 'Expenses' : 'Gastos']: exp ? exp.total : 0,
+                    [lang === 'en' ? 'Sales' : 'Ventas']: sal ? sal.total : 0
+                  };
+                });
+              })() : (s.expenseTrend || [])}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.1)" />
                 <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 12 }} />
                 <YAxis tick={{ fill: '#94a3b8', fontSize: 12 }} tickFormatter={v => `$${(v/1000).toFixed(0)}k`} />
-                <Tooltip contentStyle={{ background: '#111827', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, color: '#f1f5f9' }} formatter={v => [fmt(v), lang === 'en' ? 'Amount' : 'Monto']} />
-                <Bar dataKey="total" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
-                <defs>
-                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#6366f1" />
-                    <stop offset="100%" stopColor="#8b5cf6" />
-                  </linearGradient>
-                </defs>
+                <Tooltip contentStyle={{ background: '#111827', border: '1px solid rgba(99,102,241,0.3)', borderRadius: 8, color: '#f1f5f9' }} formatter={(v, name) => [fmt(v), name]} />
+                {activeModules.includes('sales') ? (
+                  <>
+                    <Bar dataKey={lang === 'en' ? 'Sales' : 'Ventas'} fill="#10b981" radius={[6, 6, 0, 0]} />
+                    <Bar dataKey={lang === 'en' ? 'Expenses' : 'Gastos'} fill="#ef4444" radius={[6, 6, 0, 0]} />
+                  </>
+                ) : (
+                  <Bar dataKey="total" fill="url(#barGradient)" radius={[6, 6, 0, 0]} />
+                )}
+                {!activeModules.includes('sales') && (
+                  <defs>
+                    <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="#6366f1" />
+                      <stop offset="100%" stopColor="#8b5cf6" />
+                    </linearGradient>
+                  </defs>
+                )}
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -532,6 +556,7 @@ function CrudModule({ title, fetchFn, columns, formFields, createFn, updateFn, d
   const [modalOpen, setModalOpen] = useState(false);
   const [editItem, setEditItem] = useState(null);
   const [formData, setFormData] = useState({});
+  const [exporting, setExporting] = useState(null); // 'excel' | 'pdf' | null
 
   const load = useCallback(() => {
     setLoading(true);
@@ -575,6 +600,18 @@ function CrudModule({ title, fetchFn, columns, formFields, createFn, updateFn, d
     } catch (e) { toast(e.message, 'error'); }
   };
 
+  const handleExport = async (format) => {
+    setExporting(format);
+    try {
+      await api.exportData(exportModule, format);
+      toast(lang === 'en' ? `${format.toUpperCase()} exported successfully` : `${format.toUpperCase()} exportado exitosamente`);
+    } catch (e) {
+      toast(lang === 'en' ? `Export failed: ${e.message}` : `Error al exportar: ${e.message}`, 'error');
+    } finally {
+      setExporting(null);
+    }
+  };
+
   return (
     <>
       <Header title={title} lang={lang} />
@@ -584,8 +621,24 @@ function CrudModule({ title, fetchFn, columns, formFields, createFn, updateFn, d
           <div className="title-actions">
             {exportModule && (
               <>
-                <button className="btn btn-secondary btn-sm" onClick={() => api.exportData(exportModule, 'excel')}><FileSpreadsheet size={16} /> Excel</button>
-                <button className="btn btn-secondary btn-sm" onClick={() => api.exportData(exportModule, 'pdf')}><FileText size={16} /> PDF</button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleExport('excel')}
+                  disabled={!!exporting}
+                  title={lang === 'en' ? 'Export to Excel' : 'Exportar a Excel'}
+                >
+                  {exporting === 'excel' ? <span className="loading-spinner" style={{ width: 14, height: 14 }} /> : <FileSpreadsheet size={16} />}
+                  Excel
+                </button>
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => handleExport('pdf')}
+                  disabled={!!exporting}
+                  title={lang === 'en' ? 'Export to PDF' : 'Exportar a PDF'}
+                >
+                  {exporting === 'pdf' ? <span className="loading-spinner" style={{ width: 14, height: 14 }} /> : <FileText size={16} />}
+                  PDF
+                </button>
               </>
             )}
             {createFn && <button className="btn btn-primary" onClick={openCreate}><Plus size={16} /> {addLabel || t('add', lang)}</button>}
@@ -1039,7 +1092,7 @@ function TravelPage() {
   />;
 }
 
-function SettingsPage() {
+function SettingsPage({ onModulesChange }) {
   const lang = useLang();
   const { user } = useAuth();
   const toast = useToast();
@@ -1080,6 +1133,7 @@ function SettingsPage() {
     try {
       await api.updateSector(currentSector.id, { active_modules: updated });
       setCurrentSector({ ...currentSector, active_modules: JSON.stringify(updated) });
+      if (onModulesChange) onModulesChange(updated);
       toast(t('success_update', lang));
     } catch(e) { toast(e.message, 'error'); }
   };
@@ -1741,7 +1795,7 @@ function AppLayout({ user, lang, setLang, onLogout }) {
       <Sidebar user={user} lang={lang} setLang={setLang} onLogout={onLogout} activeModules={activeModules} />
       <main className="main-content">
         <Routes>
-          <Route path="/" element={<DashboardPage />} />
+          <Route path="/" element={<DashboardPage activeModules={activeModules} />} />
           {activeModules.includes('inventory') && <Route path="/inventory" element={<InventoryPage />} />}
           {activeModules.includes('payroll') && <Route path="/payroll" element={<PayrollPage />} />}
           {activeModules.includes('expenses') && <Route path="/expenses" element={<ExpensesPage />} />}
@@ -1749,7 +1803,7 @@ function AppLayout({ user, lang, setLang, onLogout }) {
           {activeModules.includes('suppliers') && <Route path="/suppliers" element={<SuppliersPage />} />}
           {activeModules.includes('travel') && <Route path="/travel" element={<TravelPage />} />}
           {activeModules.includes('sales') && <Route path="/sales" element={<DirectSalesPage />} />}
-          <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/settings" element={<SettingsPage onModulesChange={setActiveModules} />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>

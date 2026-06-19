@@ -59,6 +59,11 @@ router.post('/', requireModule('sales'), (req, res) => {
           insertMovement.run(item.product_id, req.user.sector_id, 'exit', item.quantity, product.stock, newStock, 'Direct Sale', `SALE-${saleId}`, req.user.id);
         }
       }
+
+      // 3. Log to audit_log
+      db.prepare('INSERT INTO audit_log (user_id, action, module, record_id, changes) VALUES (?,?,?,?,?)')
+        .run(req.user.id, 'create', 'sales', saleId, JSON.stringify({ total }));
+
       return saleId;
     });
 

@@ -18,6 +18,9 @@ router.get('/stats', (req, res) => {
     // Expense stats (current month)
     const expenseStats = db.prepare("SELECT SUM(amount) as total_expenses, COUNT(*) as expense_count, SUM(CASE WHEN status = 'pending' THEN amount ELSE 0 END) as pending_amount, SUM(CASE WHEN status = 'approved' THEN amount ELSE 0 END) as approved_amount FROM expenses WHERE sector_id = ? AND strftime('%Y-%m', date) = strftime('%Y-%m', 'now')").get(sectorId);
 
+    // Sales stats (current month)
+    const salesStats = db.prepare("SELECT SUM(total) as total_sales, COUNT(*) as sales_count FROM direct_sales WHERE sector_id = ? AND strftime('%Y-%m', created_at) = strftime('%Y-%m', 'now')").get(sectorId);
+
     // Supplier stats
     const supplierStats = db.prepare("SELECT COUNT(*) as total_suppliers, AVG(rating) as avg_rating, SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as active_count FROM suppliers WHERE sector_id = ?").get(sectorId);
 
@@ -32,6 +35,9 @@ router.get('/stats', (req, res) => {
 
     // Expense trend (last 6 months)
     const expenseTrend = db.prepare("SELECT strftime('%Y-%m', date) as month, SUM(amount) as total FROM expenses WHERE sector_id = ? AND status = 'approved' GROUP BY month ORDER BY month DESC LIMIT 6").all(sectorId);
+
+    // Sales trend (last 6 months)
+    const salesTrend = db.prepare("SELECT strftime('%Y-%m', created_at) as month, SUM(total) as total FROM direct_sales WHERE sector_id = ? GROUP BY month ORDER BY month DESC LIMIT 6").all(sectorId);
 
     // Top 5 products by value
     const topProducts = db.prepare('SELECT name, sku, stock, stock * cost_price as value FROM products WHERE sector_id = ? AND active = 1 ORDER BY value DESC LIMIT 5').all(sectorId);
@@ -49,8 +55,13 @@ router.get('/stats', (req, res) => {
       suppliers: supplierStats,
       supplies: supplyStats,
       travel: travelStats,
+      sales: {
+        total_sales: salesStats.total_sales || 0,
+        sales_count: salesStats.sales_count || 0
+      },
       recentActivity,
       expenseTrend: expenseTrend.reverse(),
+      salesTrend: salesTrend.reverse(),
       topProducts,
       latestPayroll,
       notifications

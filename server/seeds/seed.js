@@ -21,7 +21,7 @@ console.log('🌱 Seeding database...');
 // SECTORS
 const sectors = [
   { name: 'Transporte y Logística', slug: 'transporte', description: 'Empresas de transporte de carga, mensajería y logística', icon: 'truck', modules: '["inventory","payroll","expenses","supplies","suppliers","travel"]' },
-  { name: 'Tlapalería / Materiales', slug: 'tlapaleria', description: 'Tiendas de materiales de construcción, ferretería y tlapalerías', icon: 'wrench', modules: '["inventory","payroll","expenses","supplies","suppliers"]' },
+  { name: 'Tlapalería / Materiales', slug: 'tlapaleria', description: 'Tiendas de materiales de construcción, ferretería y tlapalerías', icon: 'wrench', modules: '["inventory","payroll","expenses","supplies","suppliers","sales"]' },
   { name: 'Planta Cementera', slug: 'cementera', description: 'Plantas de producción de cemento y materiales industriales', icon: 'factory', modules: '["inventory","payroll","expenses","supplies","suppliers","travel"]' },
   { name: 'Alquiler de Maquinaria', slug: 'maquinaria', description: 'Renta y gestión de maquinaria pesada y equipo', icon: 'cog', modules: '["inventory","expenses","supplies","suppliers"]' },
   { name: 'Metalurgia', slug: 'metalurgia', description: 'Fundidoras, talleres metalúrgicos y procesamiento de metales', icon: 'flame', modules: '["inventory","payroll","expenses","supplies","suppliers"]' },
@@ -224,6 +224,31 @@ function seedCalculatePayroll(periodId, sectorId, status) {
 // Pre-calculate payroll details for calculated/closed periods in Sector 1
 seedCalculatePayroll(1, 1, 'calculated');
 seedCalculatePayroll(2, 1, 'closed');
+
+// DIRECT SALES (Sector 2 - Tlapalería)
+const sales = [
+  // id, sector_id, total, payment_method, customer_name, created_by, paid_amount, change_amount, created_at
+  [1, 2, 2300, 'cash', 'Juan Escutia', 4, 2500, 200, '2026-06-10 10:15:30'],
+  [2, 2, 920, 'card', 'Gael García', 4, 920, 0, '2026-06-12 14:30:00'],
+  [3, 2, 560, 'transfer', 'Inmobiliaria Alfa', 4, 560, 0, '2026-06-15 16:45:00'],
+];
+sales.forEach(s => db.prepare('INSERT INTO direct_sales (id, sector_id, total, payment_method, customer_name, created_by, paid_amount, change_amount, created_at) VALUES (?,?,?,?,?,?,?,?,?)').run(...s));
+
+const saleItems = [
+  // sale_id, product_id, quantity, unit_price, subtotal
+  [1, 11, 2, 1150, 2300], // 2 x Pintura Vinílica (TLP-001)
+  [2, 12, 1, 920, 920],   // 1 x Cable THW Cal. 12 (TLP-002)
+  [3, 13, 2, 280, 560],   // 2 x Tubo PVC 4" (TLP-003)
+];
+saleItems.forEach(si => db.prepare('INSERT INTO direct_sale_items (sale_id, product_id, quantity, unit_price, subtotal) VALUES (?,?,?,?,?)').run(...si));
+
+// Log seeds in audit_log
+const auditLogs = [
+  [4, 'create', 'sales', 1, JSON.stringify({ total: 2300 }), '2026-06-10 10:15:30'],
+  [4, 'create', 'sales', 2, JSON.stringify({ total: 920 }), '2026-06-12 14:30:00'],
+  [4, 'create', 'sales', 3, JSON.stringify({ total: 560 }), '2026-06-15 16:45:00'],
+];
+auditLogs.forEach(al => db.prepare('INSERT INTO audit_log (user_id, action, module, record_id, changes, timestamp) VALUES (?,?,?,?,?,?)').run(...al));
 
 db.save();
 
