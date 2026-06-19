@@ -29,6 +29,11 @@ class ApiService {
       throw new Error('Session expired');
     }
 
+    if (!response.ok) {
+      const data = await response.json();
+      throw new Error(data.error || 'Request failed');
+    }
+
     // Handle file downloads
     const contentType = response.headers.get('content-type');
     if (path.includes('/export/') || (contentType && (contentType.includes('spreadsheet') || contentType.includes('pdf')))) {
@@ -36,7 +41,6 @@ class ApiService {
     }
 
     const data = await response.json();
-    if (!response.ok) throw new Error(data.error || 'Request failed');
     return data;
   }
 
@@ -124,13 +128,7 @@ class ApiService {
   async exportData(module, format) {
     const responseData = await this.request(`/export/${module}/${format}`);
     
-    // Explicitly set MIME type
-    const mimeType = format === 'excel' 
-      ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
-      : 'application/pdf';
-      
-    const blob = new Blob([responseData], { type: mimeType });
-    const url = window.URL.createObjectURL(blob);
+    const url = window.URL.createObjectURL(responseData);
     const a = document.createElement('a');
     a.style.display = 'none';
     a.href = url;

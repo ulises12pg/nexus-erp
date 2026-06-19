@@ -6,7 +6,7 @@ import {
   FileText, TrendingUp, TrendingDown, AlertTriangle, ArrowUpDown, Eye, Star, 
   ChevronDown, Menu, Globe, LogOut, ArrowRight, ArrowLeft, Box, Truck, Factory,
   Flame, HardHat, CalendarDays, Clock, MapPin, CheckCircle2, XCircle, BarChart3,
-  PieChart, Filter, RefreshCw, Send, CreditCard, Receipt, Sun, Moon, ShoppingCart
+  PieChart, Filter, RefreshCw, Send, CreditCard, Receipt, Sun, Moon, ShoppingCart, Printer
 } from 'lucide-react';
 import { BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart as RechartsPie, Pie, Cell } from 'recharts';
 import api from './services/api.js';
@@ -43,6 +43,70 @@ const statusLabel = (status, lang) => {
 // ==============================
 // TOAST SYSTEM
 // ==============================
+// ==============================
+// SKELETON COMPONENTS — Skill §3: progressive-loading
+// ==============================
+function SkeletonCards({ count = 6 }) {
+  return (
+    <div className="grid-stats">
+      {Array.from({ length: count }).map((_, i) => (
+        <div key={i} className="skeleton-card">
+          <div className="skeleton skeleton-icon" />
+          <div className="skeleton skeleton-value" />
+          <div className="skeleton skeleton-label" />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonTable({ rows = 5, cols = 5 }) {
+  return (
+    <div className="table-container glass-card">
+      <div style={{ padding: '12px 16px', background: 'var(--bg-tertiary)' }}>
+        <div className="skeleton" style={{ height: 14, width: '30%' }} />
+      </div>
+      {Array.from({ length: rows }).map((_, i) => (
+        <div key={i} className="skeleton-row">
+          {Array.from({ length: cols }).map((_, j) => (
+            <div key={j} className="skeleton skeleton-cell" />
+          ))}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function SkeletonDashboard() {
+  return (
+    <div className="page-content">
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 24 }}>
+        <div className="skeleton" style={{ height: 32, width: '25%' }} />
+        <div className="skeleton" style={{ height: 16, width: '40%' }} />
+      </div>
+      <SkeletonCards count={6} />
+      <div className="grid-2" style={{ marginBottom: 24 }}>
+        <div className="glass-card" style={{ padding: 24, height: 300 }}>
+          <div className="skeleton" style={{ height: 20, width: '35%', marginBottom: 16 }} />
+          <div className="skeleton" style={{ height: '100%', maxHeight: 220, borderRadius: 'var(--radius-md)' }} />
+        </div>
+        <div className="glass-card" style={{ padding: 24, height: 300 }}>
+          <div className="skeleton" style={{ height: 20, width: '35%', marginBottom: 16 }} />
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} style={{ display: 'flex', gap: 12, alignItems: 'center', padding: '10px 0', borderBottom: '1px solid var(--border-secondary)' }}>
+              <div className="skeleton" style={{ width: 28, height: 28, borderRadius: '50%', flexShrink: 0 }} />
+              <div style={{ flex: 1 }}>
+                <div className="skeleton skeleton-text short" />
+                <div className="skeleton skeleton-text medium" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function ToastProvider({ children }) {
   const [toasts, setToasts] = useState([]);
   const addToast = useCallback((message, type = 'success') => {
@@ -54,14 +118,15 @@ function ToastProvider({ children }) {
   return (
     <ToastContext.Provider value={addToast}>
       {children}
-      <div className="toast-container">
+      {/* Skill §1: aria-live for screen reader announcement */}
+      <div className="toast-container" role="status" aria-live="polite">
         {toasts.map(t => (
           <div key={t.id} className={`toast toast-${t.type}`}>
             {t.type === 'success' ? <CheckCircle2 size={18} color="var(--success)" /> :
              t.type === 'error' ? <XCircle size={18} color="var(--danger)" /> :
              <AlertTriangle size={18} color="var(--warning)" />}
             <span className="toast-message">{t.message}</span>
-            <X size={16} className="toast-close" onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} />
+            <X size={16} className="toast-close" onClick={() => setToasts(prev => prev.filter(x => x.id !== t.id))} aria-label="Dismiss" />
           </div>
         ))}
       </div>
@@ -248,16 +313,17 @@ function Sidebar({ user, lang, setLang, onLogout, activeModules }) {
         <div className="logo-icon">N</div>
         {!collapsed && <span className="logo-text">NEXUS ERP</span>}
       </div>
-      <nav className="sidebar-nav">
+      {/* Skill §1: role=navigation, aria-label */}
+      <nav className="sidebar-nav" role="navigation" aria-label={lang === 'en' ? 'Main navigation' : 'Navegación principal'}>
         {!collapsed && <div className="nav-section-title">{t('nav_modules', lang)}</div>}
         {modules.map(m => (
-          <Link key={m.path} to={m.path} className={`nav-item ${location.pathname === m.path ? 'active' : ''}`}>
+          <Link key={m.path} to={m.path} className={`nav-item ${location.pathname === m.path ? 'active' : ''}`} aria-current={location.pathname === m.path ? 'page' : undefined}>
             <m.icon size={20} className="nav-icon" />
             {!collapsed && <span>{m.label}</span>}
           </Link>
         ))}
         {!collapsed && <div className="nav-section-title">{t('nav_system', lang)}</div>}
-        <Link to="/settings" className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`}>
+        <Link to="/settings" className={`nav-item ${location.pathname === '/settings' ? 'active' : ''}`} aria-current={location.pathname === '/settings' ? 'page' : undefined}>
           <Settings size={20} className="nav-icon" />
           {!collapsed && <span>{t('nav_settings', lang)}</span>}
         </Link>
@@ -334,9 +400,9 @@ function Header({ title, breadcrumb, lang }) {
         </div>
       </div>
       <div className="header-right">
-        <button className="notification-btn" title={lang === 'en' ? 'Notifications' : 'Notificaciones'}>
+        <button className="notification-btn" title={lang === 'en' ? 'Notifications' : 'Notificaciones'} aria-label={lang === 'en' ? 'Notifications' : 'Notificaciones'}>
           <Bell size={20} />
-          <span className="notif-dot" />
+          <span className="notif-dot" aria-hidden="true" />
         </button>
       </div>
     </header>
@@ -356,7 +422,8 @@ function DashboardPage() {
 
   useEffect(() => { api.getDashboardStats().then(setStats).catch(console.error).finally(() => setLoading(false)); }, []);
 
-  if (loading) return <div className="page-content" style={{display:'flex',justifyContent:'center',paddingTop:80}}><div className="loading-spinner lg" /></div>;
+  /* Skill §3: progressive-loading — skeleton instead of spinner */
+  if (loading) return <><Header title={t('dash_title', lang)} lang={lang} /><SkeletonDashboard /></>;
 
   const s = stats || {};
   const cards = [
@@ -381,11 +448,12 @@ function DashboardPage() {
 
         <div className="grid-stats">
           {cards.map((c, i) => (
-            <div key={i} className={`stat-card animate-in-delay-${i + 1}`}>
+            <div key={i} className={`stat-card card-glow animate-in-delay-${i + 1}`}>
               <div className="stat-icon" style={{ background: c.bg }}>
                 <c.icon size={22} color={c.color} />
               </div>
-              <div className="stat-value">{c.value}</div>
+              {/* Skill §6: number-tabular for KPI values */}
+              <div className="stat-value number-tabular">{c.value}</div>
               <div className="stat-label">{c.label}</div>
             </div>
           ))}
@@ -533,7 +601,7 @@ function CrudModule({ title, fetchFn, columns, formFields, createFn, updateFn, d
         </div>
 
         {loading ? (
-          <div style={{ display: 'flex', justifyContent: 'center', padding: 60 }}><div className="loading-spinner lg" /></div>
+          <SkeletonTable rows={6} cols={columns.length} />
         ) : data.length === 0 ? (
           <div className="empty-state">
             <Package size={48} className="empty-icon" />
@@ -549,8 +617,8 @@ function CrudModule({ title, fetchFn, columns, formFields, createFn, updateFn, d
                     {columns.map((c, ci) => (
                       <td key={ci}>
                         {c.render ? c.render(item[c.key], item, lang) :
-                         c.format === 'currency' ? fmt(item[c.key]) :
-                         c.format === 'number' ? fmtNum(item[c.key]) :
+                         c.format === 'currency' ? <span className="number-tabular">{fmt(item[c.key])}</span> :
+                         c.format === 'number' ? <span className="number-tabular">{fmtNum(item[c.key])}</span> :
                          c.format === 'date' ? fmtDate(item[c.key]) :
                          c.format === 'status' ? <span className={`badge ${statusBadge(item[c.key])}`}>{statusLabel(item[c.key], lang)}</span> :
                          item[c.key] ?? '-'}
@@ -559,8 +627,9 @@ function CrudModule({ title, fetchFn, columns, formFields, createFn, updateFn, d
                     <td>
                       <div style={{ display: 'flex', gap: 4 }}>
                         {customActions && customActions(item, load, toast, lang)}
-                        {updateFn && <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(item)} title={t('edit', lang)}><Edit3 size={14} /></button>}
-                        {deleteFn && <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDelete(item.id)} title={t('delete', lang)}><Trash2 size={14} /></button>}
+                        {/* Skill §1: aria-labels on icon-only buttons */}
+                        {updateFn && <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEdit(item)} title={t('edit', lang)} aria-label={`${t('edit', lang)} ${item.name || item.company_name || item.full_name || ''}`}><Edit3 size={14} /></button>}
+                        {deleteFn && <button className="btn btn-ghost btn-icon btn-sm" onClick={() => handleDelete(item.id)} title={t('delete', lang)} aria-label={`${t('delete', lang)} ${item.name || item.company_name || item.full_name || ''}`}><Trash2 size={14} /></button>}
                       </div>
                     </td>
                   </tr>
@@ -695,15 +764,23 @@ function PayrollPage() {
   const viewDetails = async (periodId) => {
     try { const d = await api.getPayrollDetails(periodId); setDetails(d); setDetailsModal(true); } catch(e) { toast(e.message, 'error'); }
   };
+  /* Skill §8: confirmation-dialogs — unified confirm dialog instead of window.confirm */
+  const confirmDialog = useConfirm();
   const deleteEmployee = async (id) => {
-    if (window.confirm(lang === 'en' ? 'Are you sure you want to delete this employee?' : '¿Estás seguro de que deseas eliminar a este empleado?')) {
-      try { await api.deleteEmployee(id); toast(lang === 'en' ? 'Employee deleted!' : '¡Empleado eliminado!'); load(); } catch(e) { toast(e.message, 'error'); }
-    }
+    const confirmed = await confirmDialog({
+      title: lang === 'en' ? 'Delete Employee' : 'Eliminar Empleado',
+      message: lang === 'en' ? 'Are you sure you want to delete this employee?' : '¿Estás seguro de que deseas eliminar a este empleado?'
+    });
+    if (!confirmed) return;
+    try { await api.deleteEmployee(id); toast(lang === 'en' ? 'Employee deleted!' : '¡Empleado eliminado!'); load(); } catch(e) { toast(e.message, 'error'); }
   };
   const deletePeriod = async (id) => {
-    if (window.confirm(lang === 'en' ? 'Are you sure you want to delete this payroll period? This will also delete all calculated details.' : '¿Estás seguro de que deseas eliminar este período de nómina? Esto también eliminará todos los detalles calculados.')) {
-      try { await api.deletePayrollPeriod(id); toast(lang === 'en' ? 'Payroll period deleted!' : '¡Período de nómina eliminado!'); load(); } catch(e) { toast(e.message, 'error'); }
-    }
+    const confirmed = await confirmDialog({
+      title: lang === 'en' ? 'Delete Payroll Period' : 'Eliminar Período de Nómina',
+      message: lang === 'en' ? 'Are you sure you want to delete this payroll period? This will also delete all calculated details.' : '¿Estás seguro de que deseas eliminar este período de nómina? Esto también eliminará todos los detalles calculados.'
+    });
+    if (!confirmed) return;
+    try { await api.deletePayrollPeriod(id); toast(lang === 'en' ? 'Payroll period deleted!' : '¡Período de nómina eliminado!'); load(); } catch(e) { toast(e.message, 'error'); }
   };
 
   return (
@@ -724,18 +801,18 @@ function PayrollPage() {
           <button className={`tab ${tab === 'periods' ? 'active' : ''}`} onClick={() => setTab('periods')}>{t('pay_periods', lang)}</button>
         </div>
 
-        {loading ? <div style={{display:'flex',justifyContent:'center',padding:60}}><div className="loading-spinner lg"/></div> :
+        {loading ? <SkeletonTable rows={5} cols={6} /> :
          tab === 'employees' ? (
           <div className="table-container glass-card">
             <table>
               <thead><tr><th>{t('pay_employee_code', lang)}</th><th>{t('pay_full_name', lang)}</th><th>{t('pay_position', lang)}</th><th>{t('department', lang)}</th><th>{t('pay_base_salary', lang)}</th><th>{t('pay_hire_date', lang)}</th><th>{t('actions', lang)}</th></tr></thead>
               <tbody>
                 {employees.map(e => (
-                  <tr key={e.id}><td><span className="badge badge-neutral">{e.employee_code}</span></td><td style={{fontWeight:600}}>{e.full_name}</td><td>{e.position}</td><td>{e.department}</td><td>{fmt(e.base_salary)}</td><td>{fmtDate(e.hire_date)}</td>
+                  <tr key={e.id}><td><span className="badge badge-neutral">{e.employee_code}</span></td><td style={{fontWeight:600}}>{e.full_name}</td><td>{e.position}</td><td>{e.department}</td><td><span className="number-tabular">{fmt(e.base_salary)}</span></td><td>{fmtDate(e.hire_date)}</td>
                   <td>
                     <div style={{display:'flex',gap:4}}>
                       <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEditEmployee(e)}><Edit3 size={14}/></button>
-                      <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', padding: '0 8px'}} onClick={() => deleteEmployee(e.id)}><Trash2 size={14}/> Eliminar</button>
+                      <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', padding: '0 8px'}} onClick={() => deleteEmployee(e.id)} aria-label={`${lang === 'en' ? 'Delete' : 'Eliminar'} ${e.full_name}`}><Trash2 size={14}/> {lang === 'en' ? 'Delete' : 'Eliminar'}</button>
                     </div>
                   </td></tr>
                 ))}
@@ -748,7 +825,7 @@ function PayrollPage() {
               <thead><tr><th>{t('pay_period_name', lang)}</th><th>{t('date', lang)}</th><th>{t('pay_gross_pay', lang)}</th><th>{t('pay_deductions', lang)}</th><th>{t('pay_net_pay', lang)}</th><th>{t('status', lang)}</th><th>{t('actions', lang)}</th></tr></thead>
               <tbody>
                 {periods.map(p => (
-                  <tr key={p.id}><td style={{fontWeight:600}}>{p.name}</td><td>{fmtDate(p.period_start)} — {fmtDate(p.period_end)}</td><td>{fmt(p.total_gross)}</td><td style={{color:'var(--danger)'}}>{fmt(p.total_deductions)}</td><td style={{fontWeight:700,color:'var(--success)'}}>{fmt(p.total_net)}</td>
+                  <tr key={p.id}><td style={{fontWeight:600}}>{p.name}</td><td>{fmtDate(p.period_start)} — {fmtDate(p.period_end)}</td><td><span className="number-tabular">{fmt(p.total_gross)}</span></td><td style={{color:'var(--danger)'}}><span className="number-tabular">{fmt(p.total_deductions)}</span></td><td style={{fontWeight:700,color:'var(--success)'}}><span className="number-tabular">{fmt(p.total_net)}</span></td>
                   <td><span className={`badge ${statusBadge(p.status)}`}>{statusLabel(p.status, lang)}</span></td>
                   <td><div style={{display:'flex',gap:4}}>
                     {p.status === 'draft' && <button className="btn btn-primary btn-sm" onClick={() => calcPayroll(p.id)}><BarChart3 size={14}/> {t('pay_calculate', lang)}</button>}
@@ -757,7 +834,7 @@ function PayrollPage() {
                       <button className="btn btn-ghost btn-sm" onClick={() => viewDetails(p.id)}><Eye size={14}/></button>
                     </>}
                     {p.status === 'closed' && <button className="btn btn-ghost btn-sm" onClick={() => viewDetails(p.id)}><Eye size={14}/></button>}
-                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => deletePeriod(p.id)}><Trash2 size={14}/> Eliminar</button>
+                    <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)'}} onClick={() => deletePeriod(p.id)} aria-label={`${lang === 'en' ? 'Delete' : 'Eliminar'} ${p.name}`}><Trash2 size={14}/> {lang === 'en' ? 'Delete' : 'Eliminar'}</button>
                   </div></td></tr>
                 ))}
               </tbody>
@@ -985,14 +1062,15 @@ function SettingsPage() {
     }).catch(e => toast(e.message, 'error')).finally(() => setLoading(false));
   }, []);
 
+  /* Skill §4: no-emoji-icons — use SVG Lucide icons instead of emojis */
   const ALL_MODULES = [
-    { key: 'inventory', label: t('nav_inventory', lang), icon: '📦' },
-    { key: 'payroll', label: t('nav_payroll', lang), icon: '💰' },
-    { key: 'expenses', label: t('nav_expenses', lang), icon: '📊' },
-    { key: 'supplies', label: t('nav_supplies', lang), icon: '🔧' },
-    { key: 'suppliers', label: t('nav_suppliers', lang), icon: '🏢' },
-    { key: 'travel', label: t('nav_travel', lang), icon: '✈️' },
-    { key: 'sales', label: t('nav_sales', lang), icon: '🛒' },
+    { key: 'inventory', label: t('nav_inventory', lang), Icon: Package, color: '#6366f1', bg: 'rgba(99,102,241,0.15)' },
+    { key: 'payroll', label: t('nav_payroll', lang), Icon: Users, color: '#8b5cf6', bg: 'rgba(139,92,246,0.15)' },
+    { key: 'expenses', label: t('nav_expenses', lang), Icon: DollarSign, color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' },
+    { key: 'supplies', label: t('nav_supplies', lang), Icon: Wrench, color: '#10b981', bg: 'rgba(16,185,129,0.15)' },
+    { key: 'suppliers', label: t('nav_suppliers', lang), Icon: Building2, color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' },
+    { key: 'travel', label: t('nav_travel', lang), Icon: Plane, color: '#ec4899', bg: 'rgba(236,72,153,0.15)' },
+    { key: 'sales', label: t('nav_sales', lang), Icon: ShoppingCart, color: '#ef4444', bg: 'rgba(239,68,68,0.15)' },
   ];
 
   const toggleModule = async (moduleKey) => {
@@ -1021,14 +1099,20 @@ function SettingsPage() {
           {(user.role === 'superadmin' || user.role === 'admin') && <button className={`tab ${tab === 'users' ? 'active' : ''}`} onClick={() => setTab('users')}>{t('set_users', lang)}</button>}
         </div>
 
+        {/* Skill §4: no-emoji-icons — replaced emoji with Lucide SVG icons */}
         {tab === 'sector' && (
           <div className="grid-3">
             {sectors.map(s => {
-              const icons = { truck: '🚛', wrench: '🔧', factory: '🏭', cog: '⚙️', flame: '🔥' };
+              const sectorIconMap = { truck: Truck, wrench: Wrench, factory: Factory, cog: Settings, flame: Flame };
+              const sectorColorMap = { truck: { color: '#6366f1', bg: 'rgba(99,102,241,0.15)' }, wrench: { color: '#f59e0b', bg: 'rgba(245,158,11,0.15)' }, factory: { color: '#10b981', bg: 'rgba(16,185,129,0.15)' }, cog: { color: '#94a3b8', bg: 'rgba(148,163,184,0.15)' }, flame: { color: '#ef4444', bg: 'rgba(239,68,68,0.15)' } };
+              const SectorIcon = sectorIconMap[s.icon] || Building2;
+              const sectorColors = sectorColorMap[s.icon] || { color: '#3b82f6', bg: 'rgba(59,130,246,0.15)' };
               const isActive = s.id === user.sector_id;
               return (
-                <div key={s.id} className="glass-card" style={{ padding: 24, border: isActive ? '2px solid var(--accent-primary)' : undefined }}>
-                  <div style={{ fontSize: '2rem', marginBottom: 8 }}>{icons[s.icon] || '🏢'}</div>
+                <div key={s.id} className="glass-card card-glow" style={{ padding: 24, border: isActive ? '2px solid var(--accent-primary)' : undefined }}>
+                  <div className="sector-icon-container" style={{ background: sectorColors.bg }}>
+                    <SectorIcon size={24} color={sectorColors.color} />
+                  </div>
                   <h3>{s.name}</h3>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginTop: 4 }}>{s.description}</p>
                   {isActive && <span className="badge badge-success" style={{ marginTop: 12 }}>{lang === 'en' ? 'Current' : 'Actual'}</span>}
@@ -1044,16 +1128,16 @@ function SettingsPage() {
         {tab === 'modules' && currentSector && (
           <div className="glass-card" style={{ padding: 24 }}>
             <h3 style={{ marginBottom: 16 }}>{currentSector.name} — {t('set_modules', lang)}</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
               {ALL_MODULES.map(m => {
                 const isActive = JSON.parse(currentSector.active_modules || '[]').includes(m.key);
                 return (
-                  <div key={m.key} className="glass-card" style={{ padding: 16, cursor: 'pointer', border: isActive ? '1px solid var(--accent-primary)' : undefined, opacity: isActive ? 1 : 0.5 }} onClick={() => toggleModule(m.key)}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ fontSize: '1.4rem' }}>{m.icon}</span>
-                      <span style={{ fontWeight: 600 }}>{m.label}</span>
-                      <span style={{ marginLeft: 'auto' }}>{isActive ? <CheckCircle2 size={18} color="var(--success)"/> : <XCircle size={18} color="var(--text-tertiary)"/>}</span>
+                  <div key={m.key} className={`module-toggle-card ${isActive ? 'module-active' : ''}`} style={{ opacity: isActive ? 1 : 0.6 }} onClick={() => toggleModule(m.key)} role="switch" aria-checked={isActive} aria-label={m.label}>
+                    <div className="module-icon" style={{ background: m.bg }}>
+                      <m.Icon size={20} color={m.color} />
                     </div>
+                    <span style={{ fontWeight: 600, flex: 1 }}>{m.label}</span>
+                    {isActive ? <CheckCircle2 size={18} color="var(--success)"/> : <XCircle size={18} color="var(--text-tertiary)"/>}
                   </div>
                 );
               })}
@@ -1101,6 +1185,15 @@ function DirectSalesPage() {
   const [paymentMethod, setPaymentMethod] = useState('cash');
   const [customer, setCustomer] = useState('');
   const [loading, setLoading] = useState(false);
+  
+  // New States
+  const [payAmount, setPayAmount] = useState('');
+  const [activeTab, setActiveTab] = useState('register'); // 'register' | 'history'
+  const [salesHistory, setSalesHistory] = useState([]);
+  const [salesHistoryLoading, setSalesHistoryLoading] = useState(false);
+  const [selectedSale, setSelectedSale] = useState(null);
+  const [ticketModalOpen, setTicketModalOpen] = useState(false);
+  const [historySearch, setHistorySearch] = useState('');
 
   const loadProducts = useCallback(async () => {
     try {
@@ -1109,7 +1202,22 @@ function DirectSalesPage() {
     } catch(e) { toast(e.message, 'error'); }
   }, [toast]);
 
+  const loadSalesHistory = useCallback(async () => {
+    setSalesHistoryLoading(true);
+    try {
+      const res = await api.getSales();
+      setSalesHistory(res.data || []);
+    } catch(e) { toast(e.message, 'error'); }
+    setSalesHistoryLoading(false);
+  }, [toast]);
+
   useEffect(() => { loadProducts(); }, [loadProducts]);
+
+  useEffect(() => {
+    if (activeTab === 'history') {
+      loadSalesHistory();
+    }
+  }, [activeTab, loadSalesHistory]);
 
   const addToCart = (prod) => {
     if (prod.stock <= 0) return toast(lang === 'en' ? 'Out of stock!' : '¡Sin stock!', 'warning');
@@ -1132,23 +1240,135 @@ function DirectSalesPage() {
   };
 
   const total = cart.reduce((sum, item) => sum + (item.sale_price * item.quantity), 0);
+  const changeAmount = payAmount && Number(payAmount) >= total ? Number(payAmount) - total : 0;
 
   const handleCheckout = async () => {
     if (cart.length === 0) return;
+    if (paymentMethod === 'cash' && payAmount && Number(payAmount) < total) {
+      return toast(lang === 'en' ? 'Insufficient payment amount!' : '¡Cantidad de pago insuficiente!', 'warning');
+    }
+    
     setLoading(true);
     try {
-      await api.createSale({
+      const payload = {
         items: cart.map(i => ({ product_id: i.id, quantity: i.quantity, price: i.sale_price })),
         payment_method: paymentMethod,
         customer_name: customer,
-        total
-      });
+        total,
+        paid_amount: paymentMethod === 'cash' && payAmount ? Number(payAmount) : total,
+        change_amount: paymentMethod === 'cash' && payAmount ? Math.max(0, Number(payAmount) - total) : 0
+      };
+      
+      const res = await api.createSale(payload);
       toast(lang === 'en' ? 'Sale completed successfully!' : '¡Venta completada con éxito!');
+      
+      if (res && res.saleId) {
+        try {
+          const saleDetails = await api.getSale(res.saleId);
+          setSelectedSale(saleDetails);
+          setTicketModalOpen(true);
+        } catch(e) {
+          console.error("Failed to load sale details", e);
+        }
+      }
+      
       setCart([]);
       setCustomer('');
+      setPayAmount('');
       loadProducts();
     } catch(e) { toast(e.message, 'error'); }
     setLoading(false);
+  };
+
+  const printTicket = (sale) => {
+    const printWindow = window.open('', '_blank', 'width=400,height=600');
+    if (!printWindow) {
+      toast(lang === 'en' ? 'Please allow pop-ups to print the ticket.' : 'Por favor permita las ventanas emergentes para imprimir el ticket.', 'warning');
+      return;
+    }
+    
+    const itemsHtml = (sale.items || []).map(item => `
+      <tr>
+        <td style="padding: 4px 0; vertical-align: top;">${item.quantity}</td>
+        <td style="padding: 4px 0; vertical-align: top; padding-left: 4px;">${item.product_name || item.name}</td>
+        <td style="padding: 4px 0; vertical-align: top; text-align: right;">$${Number(item.quantity * (item.unit_price || item.price)).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+      </tr>
+    `).join('');
+
+    printWindow.document.write(`
+      <html>
+      <head>
+        <title>Ticket SALE-${sale.id}</title>
+        <style>
+          body { font-family: 'Courier New', Courier, monospace; padding: 20px; font-size: 14px; color: #000; }
+          .text-center { text-align: center; }
+          .text-right { text-align: right; }
+          .ticket-header { margin-bottom: 20px; }
+          .ticket-title { font-size: 18px; font-weight: bold; margin: 0; }
+          .ticket-subtitle { margin: 5px 0; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          th, td { padding: 4px 0; text-align: left; }
+          .total-section { font-weight: bold; margin-top: 10px; }
+          @media print {
+            body { padding: 0; }
+          }
+        </style>
+      </head>
+      <body onload="window.print(); setTimeout(function() { window.close(); }, 500);">
+        <div class="text-center ticket-header">
+          <h1 class="ticket-title">NEXUS ERP</h1>
+          <p class="ticket-subtitle">COMPROBANTE DE VENTA</p>
+        </div>
+        <div>
+          <strong>Folio:</strong> SALE-${sale.id}<br>
+          <strong>Fecha:</strong> ${new Date(sale.created_at).toLocaleString('es-MX')}<br>
+          <strong>Cliente:</strong> ${sale.customer_name || 'Público General'}<br>
+          ${sale.creator ? `<strong>Vendedor:</strong> ${sale.creator}<br>` : ''}
+        </div>
+        <div class="divider"></div>
+        <table>
+          <thead>
+            <tr style="border-bottom: 1px dashed #000;">
+              <th style="padding: 4px 0;">Cant</th>
+              <th style="padding: 4px 0; padding-left: 4px;">Prod</th>
+              <th style="padding: 4px 0; text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        <div class="divider"></div>
+        <div class="total-section">
+          <div style="display:flex; justify-content:space-between;">
+            <span>TOTAL:</span>
+            <span>$${Number(sale.total).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+          </div>
+          ${sale.payment_method === 'cash' ? `
+            <div style="display:flex; justify-content:space-between; font-weight:normal; margin-top:4px;">
+              <span>Recibido:</span>
+              <span>$${Number(sale.paid_amount || sale.total).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+            <div style="display:flex; justify-content:space-between; font-weight:normal;">
+              <span>Cambio:</span>
+              <span>$${Number(sale.change_amount || 0).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+            </div>
+          ` : ''}
+          <div style="display:flex; justify-content:space-between; font-weight:normal; margin-top:4px;">
+            <span>Método Pago:</span>
+            <span>${sale.payment_method === 'cash' ? 'Efectivo' : sale.payment_method === 'card' ? 'Tarjeta' : 'Transferencia'}</span>
+          </div>
+        </div>
+        <div class="divider"></div>
+        <div class="text-center" style="margin-top: 20px;">
+          <p>¡Gracias por su compra!</p>
+          <p>NEXUS ERP</p>
+        </div>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
   };
 
   const filteredProducts = products.filter(p => p.name.toLowerCase().includes(search.toLowerCase()) || p.sku.toLowerCase().includes(search.toLowerCase()));
@@ -1156,81 +1376,348 @@ function DirectSalesPage() {
   return (
     <>
       <Header title={t('sales_title', lang)} lang={lang} />
-      <div className="page-content" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
+      <div className="page-content">
         
-        {/* Products Section */}
-        <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{t('inv_products', lang)}</h2>
-            <div className="form-input-group" style={{ width: 300 }}>
-              <Search size={16} className="input-icon" />
-              <input className="form-input" placeholder={t('search', lang)} value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-          </div>
-          
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, maxHeight: '65vh', overflow: 'auto', paddingRight: 8 }}>
-            {filteredProducts.map(p => (
-              <div key={p.id} className="glass-card" style={{ padding: 16, cursor: p.stock > 0 ? 'pointer' : 'not-allowed', opacity: p.stock > 0 ? 1 : 0.6, display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border-color)', transition: 'transform 0.2s, box-shadow 0.2s' }} onClick={() => p.stock > 0 && addToCart(p)} onMouseEnter={e => e.currentTarget.style.transform = p.stock > 0 ? 'translateY(-2px)' : 'none'} onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
-                <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>{p.sku}</div>
-                <div style={{ fontWeight: 600, lineHeight: 1.2 }}>{p.name}</div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
-                  <div style={{ fontWeight: 700, color: 'var(--primary)' }}>{fmt(p.sale_price)}</div>
-                  <div style={{ fontSize: '0.8rem', color: p.stock > 0 ? 'var(--text-secondary)' : 'var(--danger)' }}>Stock: {p.stock}</div>
-                </div>
-              </div>
-            ))}
-            {filteredProducts.length === 0 && <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>{t('no_results', lang)}</div>}
-          </div>
-        </div>
-
-        {/* Cart Section */}
-        <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 100 }}>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}><ShoppingCart size={20} /> {t('sales_cart', lang)}</h2>
-          
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '40vh', overflow: 'auto' }}>
-            {cart.length === 0 ? <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-tertiary)' }}>{t('sales_empty', lang)}</div> : 
-             cart.map(item => (
-              <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</div>
-                  <div style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>{fmt(item.sale_price)} x {item.quantity} = {fmt(item.sale_price * item.quantity)}</div>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
-                  <span style={{ width: 20, textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
-                  <button className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
-                  <button className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', padding: 4 }} onClick={() => removeFromCart(item.id)}><X size={14}/></button>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: 16, marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="form-group">
-              <label className="form-label">{t('sales_customer', lang)}</label>
-              <input className="form-input" value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Ej. Juan Pérez" />
-            </div>
-            
-            <div className="form-group">
-              <label className="form-label">{t('sales_payment_method', lang)}</label>
-              <select className="form-input" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
-                <option value="cash">{lang === 'en' ? 'Cash' : 'Efectivo'}</option>
-                <option value="card">{lang === 'en' ? 'Credit/Debit Card' : 'Tarjeta'}</option>
-                <option value="transfer">{lang === 'en' ? 'Transfer' : 'Transferencia'}</option>
-              </select>
-            </div>
-
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.25rem', fontWeight: 700 }}>
-              <span>{t('sales_total', lang)}:</span>
-              <span style={{ color: 'var(--primary)' }}>{fmt(total)}</span>
-            </div>
-            
-            <button className="btn btn-primary" style={{ width: '100%', padding: 12, fontSize: '1.1rem' }} onClick={handleCheckout} disabled={cart.length === 0 || loading}>
-              {loading ? <span className="loading-spinner"/> : <ShoppingCart size={20} />} {t('sales_checkout', lang)}
+        {/* Navigation Tabs and Export Actions */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
+          <div className="tab-container" style={{ display: 'flex', gap: 8 }}>
+            <button 
+              type="button" 
+              className={`btn ${activeTab === 'register' ? 'btn-primary' : 'btn-ghost'}`} 
+              onClick={() => setActiveTab('register')}
+            >
+              <ShoppingCart size={16} /> {t('sales_register_title', lang)}
+            </button>
+            <button 
+              type="button" 
+              className={`btn ${activeTab === 'history' ? 'btn-primary' : 'btn-ghost'}`} 
+              onClick={() => setActiveTab('history')}
+            >
+              <Receipt size={16} /> {t('sales_history_title', lang)}
             </button>
           </div>
+          
+          {activeTab === 'history' && (
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button 
+                type="button"
+                className="btn btn-secondary btn-sm" 
+                onClick={() => api.exportData('sales', 'excel')}
+              >
+                <FileSpreadsheet size={16} /> Excel
+              </button>
+              <button 
+                type="button"
+                className="btn btn-secondary btn-sm" 
+                onClick={() => api.exportData('sales', 'pdf')}
+              >
+                <FileText size={16} /> PDF
+              </button>
+            </div>
+          )}
         </div>
+
+        {activeTab === 'register' ? (
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
+            
+            {/* Products Section */}
+            <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{t('inv_products', lang)}</h2>
+                <div className="form-input-group" style={{ width: 300 }}>
+                  <Search size={16} className="input-icon" />
+                  <input className="form-input" placeholder={t('search', lang)} value={search} onChange={e => setSearch(e.target.value)} />
+                </div>
+              </div>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, maxHeight: '65vh', overflow: 'auto', paddingRight: 8 }}>
+                {filteredProducts.map(p => (
+                  <div key={p.id} className="glass-card" style={{ padding: 16, cursor: p.stock > 0 ? 'pointer' : 'not-allowed', opacity: p.stock > 0 ? 1 : 0.6, display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border-color)', transition: 'transform 0.2s, box-shadow 0.2s' }} onClick={() => p.stock > 0 && addToCart(p)} onMouseEnter={e => e.currentTarget.style.transform = p.stock > 0 ? 'translateY(-2px)' : 'none'} onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+                    <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>{p.sku}</div>
+                    <div style={{ fontWeight: 600, lineHeight: 1.2 }}>{p.name}</div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
+                      <div className="number-tabular" style={{ fontWeight: 700, color: 'var(--accent-primary)' }}>{fmt(p.sale_price)}</div>
+                      <div className="number-tabular" style={{ fontSize: '0.8rem', color: p.stock > 0 ? 'var(--text-secondary)' : 'var(--danger)' }}>Stock: {p.stock}</div>
+                    </div>
+                  </div>
+                ))}
+                {filteredProducts.length === 0 && <div style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>{t('no_results', lang)}</div>}
+              </div>
+            </div>
+
+            {/* Cart Section */}
+            <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16, position: 'sticky', top: 100 }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}><ShoppingCart size={20} /> {t('sales_cart', lang)}</h2>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12, maxHeight: '35vh', overflow: 'auto' }}>
+                {cart.length === 0 ? <div style={{ textAlign: 'center', padding: 30, color: 'var(--text-tertiary)' }}>{t('sales_empty', lang)}</div> : 
+                 cart.map(item => (
+                  <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: 12 }}>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontWeight: 600, fontSize: '0.9rem' }}>{item.name}</div>
+                      <div className="number-tabular" style={{ fontSize: '0.8rem', color: 'var(--text-tertiary)' }}>{fmt(item.sale_price)} x {item.quantity} = {fmt(item.sale_price * item.quantity)}</div>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => updateQuantity(item.id, item.quantity - 1)}>-</button>
+                      <span style={{ width: 20, textAlign: 'center', fontWeight: 600 }}>{item.quantity}</span>
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ padding: '4px 8px' }} onClick={() => updateQuantity(item.id, item.quantity + 1)}>+</button>
+                      <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)', padding: 4 }} onClick={() => removeFromCart(item.id)}><X size={14}/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div style={{ borderTop: '2px solid var(--border-color)', paddingTop: 16, marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                <div className="form-group">
+                  <label className="form-label">{t('sales_customer', lang)}</label>
+                  <input className="form-input" value={customer} onChange={e => setCustomer(e.target.value)} placeholder="Ej. Juan Pérez" />
+                </div>
+                
+                <div className="form-group">
+                  <label className="form-label">{t('sales_payment_method', lang)}</label>
+                  <select className="form-input" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value)}>
+                    <option value="cash">{lang === 'en' ? 'Cash' : 'Efectivo'}</option>
+                    <option value="card">{lang === 'en' ? 'Credit/Debit Card' : 'Tarjeta'}</option>
+                    <option value="transfer">{lang === 'en' ? 'Transfer' : 'Transferencia'}</option>
+                  </select>
+                </div>
+
+                {/* Pay with field and bills for Cash */}
+                {paymentMethod === 'cash' && (
+                  <>
+                    <div className="form-group animate-slide-in">
+                      <label className="form-label">{t('sales_pay_with', lang)}</label>
+                      <div className="form-input-group">
+                        <DollarSign size={16} className="input-icon" />
+                        <input 
+                          type="number" 
+                          className="form-input" 
+                          value={payAmount} 
+                          onChange={e => setPayAmount(e.target.value)} 
+                          placeholder="0.00" 
+                        />
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, margin: '4px 0' }}>
+                      {[20, 50, 100, 200, 500, 1000].map(bill => (
+                        <button 
+                          key={bill} 
+                          type="button" 
+                          className="btn btn-secondary btn-sm" 
+                          style={{ fontSize: '0.8rem', padding: '6px 4px' }}
+                          onClick={() => setPayAmount(bill.toString())}
+                        >
+                          ${bill}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1rem', fontWeight: 600, color: payAmount && Number(payAmount) < total ? 'var(--danger)' : 'var(--success)', marginTop: 4 }}>
+                      <span>{t('sales_change', lang)}:</span>
+                      <span className="number-tabular">{fmt(changeAmount)}</span>
+                    </div>
+                  </>
+                )}
+
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '1.25rem', fontWeight: 700, borderTop: '1px solid var(--border-color)', paddingTop: 12 }}>
+                  <span>{t('sales_total', lang)}:</span>
+                  <span className="number-tabular" style={{ color: 'var(--accent-primary)' }}>{fmt(total)}</span>
+                </div>
+                
+                <button type="button" className="btn btn-primary" style={{ width: '100%', padding: 12, fontSize: '1.1rem' }} onClick={handleCheckout} disabled={cart.length === 0 || loading || (paymentMethod === 'cash' && payAmount && Number(payAmount) < total)}>
+                  {loading ? <span className="loading-spinner"/> : <ShoppingCart size={20} />} {t('sales_checkout', lang)}
+                </button>
+              </div>
+            </div>
+
+          </div>
+        ) : (
+          /* Sales History Section */
+          <div className="glass-card" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 12 }}>
+              <h2 style={{ fontSize: '1.25rem', fontWeight: 600 }}>{t('sales_history_title', lang)}</h2>
+              <div className="form-input-group" style={{ width: 300 }}>
+                <Search size={16} className="input-icon" />
+                <input 
+                  className="form-input" 
+                  placeholder={t('search', lang)} 
+                  value={historySearch} 
+                  onChange={e => setHistorySearch(e.target.value)} 
+                />
+              </div>
+            </div>
+
+            {salesHistoryLoading ? (
+              <SkeletonTable rows={5} cols={7} />
+            ) : salesHistory.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-tertiary)' }}>
+                {t('no_results', lang)}
+              </div>
+            ) : (
+              <div style={{ overflowX: 'auto' }}>
+                <table style={{ width: '100%' }}>
+                  <thead>
+                    <tr>
+                      <th>{t('sales_date', lang)}</th>
+                      <th>{t('sales_folio', lang)}</th>
+                      <th>{t('sales_customer', lang)}</th>
+                      <th>{t('sales_payment_method', lang)}</th>
+                      <th>{t('sales_seller', lang)}</th>
+                      <th style={{ textAlign: 'right' }}>{t('sales_total', lang)}</th>
+                      <th style={{ textAlign: 'center' }}>{t('actions', lang)}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {salesHistory
+                      .filter(s => 
+                        (s.customer_name || '').toLowerCase().includes(historySearch.toLowerCase()) || 
+                        `SALE-${s.id}`.toLowerCase().includes(historySearch.toLowerCase())
+                      )
+                      .map(sale => (
+                        <tr key={sale.id}>
+                          <td>{new Date(sale.created_at).toLocaleDateString('es-MX')}</td>
+                          <td>SALE-{sale.id}</td>
+                          <td>{sale.customer_name || (lang === 'en' ? 'General Public' : 'Público General')}</td>
+                          <td>{sale.payment_method === 'cash' ? (lang === 'en' ? 'Cash' : 'Efectivo') : sale.payment_method === 'card' ? (lang === 'en' ? 'Card' : 'Tarjeta') : (lang === 'en' ? 'Transfer' : 'Transferencia')}</td>
+                          <td>{sale.creator || '-'}</td>
+                          <td style={{ textAlign: 'right', fontWeight: 700 }} className="number-tabular">{fmt(sale.total)}</td>
+                          <td style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                            <button 
+                              type="button"
+                              className="btn btn-ghost btn-sm" 
+                              title={t('sales_ticket', lang)} 
+                              onClick={async () => {
+                                try {
+                                  const saleDetails = await api.getSale(sale.id);
+                                  setSelectedSale(saleDetails);
+                                  setTicketModalOpen(true);
+                                } catch(e) { toast(e.message, 'error'); }
+                              }}
+                            >
+                              <Eye size={14} />
+                            </button>
+                            <button 
+                              type="button"
+                              className="btn btn-ghost btn-sm" 
+                              title={t('sales_print', lang)} 
+                              onClick={async () => {
+                                try {
+                                  const saleDetails = await api.getSale(sale.id);
+                                  printTicket(saleDetails);
+                                } catch(e) { toast(e.message, 'error'); }
+                              }}
+                            >
+                              <Printer size={14} />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      {/* Ticket Modal */}
+      <Modal isOpen={ticketModalOpen} onClose={() => setTicketModalOpen(false)} title={t('sales_ticket', lang)}>
+        <div className="modal-body" style={{ maxHeight: '60vh', overflow: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+          {selectedSale && (
+            <>
+              <div style={{
+                width: '100%',
+                maxWidth: '320px',
+                padding: '24px',
+                background: 'var(--bg-card)',
+                border: '1px solid var(--border-color)',
+                borderRadius: '8px',
+                boxShadow: 'var(--shadow-sm)',
+                fontFamily: 'Courier New, Courier, monospace',
+                fontSize: '0.85rem',
+                color: 'var(--text-primary)',
+                lineHeight: 1.4
+              }}>
+                <div style={{ textAlign: 'center', marginBottom: 16 }}>
+                  <h3 style={{ margin: '0 0 4px 0', fontSize: '1.2rem', fontWeight: 'bold' }}>NEXUS ERP</h3>
+                  <div style={{ fontSize: '0.75rem', opacity: 0.8 }}>COMPROBANTE DE VENTA</div>
+                </div>
+                
+                <div style={{ fontSize: '0.75rem', marginBottom: 12 }}>
+                  <div><strong>{t('sales_folio', lang)}:</strong> SALE-{selectedSale.id}</div>
+                  <div><strong>{t('date', lang)}:</strong> {new Date(selectedSale.created_at).toLocaleString(lang === 'en' ? 'en-US' : 'es-MX')}</div>
+                  <div><strong>{t('sales_customer', lang)}:</strong> {selectedSale.customer_name || (lang === 'en' ? 'General Public' : 'Público General')}</div>
+                  {selectedSale.creator && <div><strong>{t('sales_seller', lang)}:</strong> {selectedSale.creator}</div>}
+                </div>
+                
+                <div style={{ borderTop: '1px dashed var(--border-color)', margin: '8px 0' }}></div>
+                
+                <table style={{ width: '100%', fontSize: '0.75rem', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ borderBottom: '1px dashed var(--border-color)' }}>
+                      <th style={{ textAlign: 'left', padding: '4px 0' }}>Cant</th>
+                      <th style={{ textAlign: 'left', padding: '4px 0', paddingLeft: 4 }}>Prod</th>
+                      <th style={{ textAlign: 'right', padding: '4px 0' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {selectedSale.items && selectedSale.items.map(item => (
+                      <tr key={item.id}>
+                        <td style={{ padding: '4px 0', verticalAlign: 'top' }}>{item.quantity}</td>
+                        <td style={{ padding: '4px 0', verticalAlign: 'top', paddingLeft: 4 }}>{item.product_name || item.name}</td>
+                        <td style={{ padding: '4px 0', verticalAlign: 'top', textAlign: 'right' }} className="number-tabular">
+                          {fmt(item.quantity * (item.unit_price || item.price))}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                
+                <div style={{ borderTop: '1px dashed var(--border-color)', margin: '8px 0' }}></div>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, fontSize: '0.8rem', fontWeight: 600 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span>TOTAL:</span>
+                    <span className="number-tabular" style={{ color: 'var(--accent-primary)' }}>{fmt(selectedSale.total)}</span>
+                  </div>
+                  {selectedSale.payment_method === 'cash' && (
+                    <>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'normal', fontSize: '0.75rem', opacity: 0.9 }}>
+                        <span>{t('sales_amount_paid', lang)}:</span>
+                        <span className="number-tabular">{fmt(selectedSale.paid_amount || selectedSale.total)}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'normal', fontSize: '0.75rem', opacity: 0.9 }}>
+                        <span>{t('sales_change_returned', lang)}:</span>
+                        <span className="number-tabular">{fmt(selectedSale.change_amount || 0)}</span>
+                      </div>
+                    </>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'normal', fontSize: '0.75rem', opacity: 0.9, marginTop: 4 }}>
+                    <span>{t('sales_payment_method', lang)}:</span>
+                    <span>{selectedSale.payment_method === 'cash' ? (lang === 'en' ? 'Cash' : 'Efectivo') : selectedSale.payment_method === 'card' ? (lang === 'en' ? 'Card' : 'Tarjeta') : (lang === 'en' ? 'Transfer' : 'Transferencia')}</span>
+                  </div>
+                </div>
+                
+                <div style={{ borderTop: '1px dashed var(--border-color)', margin: '12px 0 8px 0' }}></div>
+                
+                <div style={{ textAlign: 'center', fontSize: '0.75rem', opacity: 0.8, marginTop: 12 }}>
+                  ¡Gracias por su compra!<br />NEXUS ERP
+                </div>
+              </div>
+
+              <div style={{ marginTop: 20, display: 'flex', gap: 12, width: '100%', justifyContent: 'center' }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setTicketModalOpen(false)}>
+                  {t('close', lang)}
+                </button>
+                <button type="button" className="btn btn-primary" onClick={() => printTicket(selectedSale)}>
+                  <Printer size={16} /> {t('sales_print', lang)}
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </Modal>
     </>
   );
 }

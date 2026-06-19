@@ -32,15 +32,15 @@ router.get('/:id', requireModule('sales'), (req, res) => {
 router.post('/', requireModule('sales'), (req, res) => {
   try {
     const db = getDb();
-    const { items, payment_method, customer_name, total } = req.body;
+    const { items, payment_method, customer_name, total, paid_amount, change_amount } = req.body;
     
     if (!items || !items.length) return res.status(400).json({ error: 'Sale must have items.' });
 
     const createSale = db.transaction(() => {
       // 1. Create Sale
       const saleResult = db.prepare(
-        'INSERT INTO direct_sales (sector_id, total, payment_method, customer_name, created_by) VALUES (?,?,?,?,?)'
-      ).run(req.user.sector_id, total, payment_method || 'cash', customer_name, req.user.id);
+        'INSERT INTO direct_sales (sector_id, total, payment_method, customer_name, created_by, paid_amount, change_amount) VALUES (?,?,?,?,?,?,?)'
+      ).run(req.user.sector_id, total, payment_method || 'cash', customer_name, req.user.id, paid_amount || 0, change_amount || 0);
       
       const saleId = saleResult.lastInsertRowid;
 

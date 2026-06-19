@@ -186,11 +186,44 @@ tvs.forEach(t => db.prepare('INSERT INTO travel_requests (sector_id, employee_id
 
 // PAYROLL PERIODS
 const pps = [
-  [1, 'Quincena 1 - Junio 2026', 'quincenal', '2026-06-01', '2026-06-15', 'calculated', 67500, 12150, 55350],
-  [1, 'Quincena 2 - Mayo 2026', 'quincenal', '2026-05-16', '2026-05-31', 'closed', 67500, 12150, 55350],
+  [1, 'Quincena 1 - Junio 2026', 'quincenal', '2026-06-01', '2026-06-15', 'calculated', 0, 0, 0],
+  [1, 'Quincena 2 - Mayo 2026', 'quincenal', '2026-05-16', '2026-05-31', 'closed', 0, 0, 0],
   [2, 'Quincena 1 - Junio 2026', 'quincenal', '2026-06-01', '2026-06-15', 'draft', 0, 0, 0],
 ];
 pps.forEach(p => db.prepare('INSERT INTO payroll_periods (sector_id, name, period_type, period_start, period_end, status, total_gross, total_deductions, total_net, created_by) VALUES (?,?,?,?,?,?,?,?,?,?)').run(...p, 1));
+
+function seedCalculatePayroll(periodId, sectorId, status) {
+  const employees = db.prepare('SELECT * FROM employees WHERE sector_id = ? AND active = 1').all(sectorId);
+  db.prepare('DELETE FROM payroll_details WHERE period_id = ?').run(periodId);
+  
+  let totalGross = 0, totalDeductions = 0, totalNet = 0;
+  const insertDetail = db.prepare(
+    'INSERT INTO payroll_details (period_id, employee_id, days_worked, base_salary, overtime_hours, overtime_pay, bonuses, deductions_imss, deductions_isr, deductions_other, gross_pay, total_deductions, net_pay) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)'
+  );
+  
+  for (const emp of employees) {
+    const dailySalary = emp.base_salary / 30;
+    const daysWorked = 15;
+    const basePay = dailySalary * daysWorked;
+    const overtimePay = 0;
+    const bonuses = 0;
+    const grossPay = basePay + overtimePay + bonuses;
+    const imss = grossPay * 0.025;
+    const isr = grossPay > 15000 ? grossPay * 0.12 : grossPay * 0.08;
+    const otherDed = 0;
+    const totalDed = imss + isr + otherDed;
+    const netPay = grossPay - totalDed;
+    
+    insertDetail.run(periodId, emp.id, daysWorked, basePay, 0, overtimePay, bonuses, imss, isr, otherDed, grossPay, totalDed, netPay);
+    totalGross += grossPay; totalDeductions += totalDed; totalNet += netPay;
+  }
+  db.prepare('UPDATE payroll_periods SET total_gross = ?, total_deductions = ?, total_net = ?, status = ? WHERE id = ?')
+    .run(totalGross, totalDeductions, totalNet, status, periodId);
+}
+
+// Pre-calculate payroll details for calculated/closed periods in Sector 1
+seedCalculatePayroll(1, 1, 'calculated');
+seedCalculatePayroll(2, 1, 'closed');
 
 db.save();
 

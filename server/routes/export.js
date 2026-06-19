@@ -109,6 +109,19 @@ router.get('/:module/:format', async (req, res) => {
         title = 'Reporte de Viajes';
         break;
 
+      case 'sales':
+        data = db.prepare('SELECT s.created_at, s.id, s.customer_name, s.payment_method, u.full_name as creator, s.total FROM direct_sales s LEFT JOIN users u ON s.created_by = u.id WHERE s.sector_id = ? ORDER BY s.created_at DESC').all(sectorId);
+        columns = [
+          { header: 'Fecha', key: 'created_at', width: 20 },
+          { header: 'Folio', key: 'id', width: 12 },
+          { header: 'Cliente', key: 'customer_name', width: 25 },
+          { header: 'Método Pago', key: 'payment_method', width: 15 },
+          { header: 'Vendedor', key: 'creator', width: 25 },
+          { header: 'Total', key: 'total', width: 15 }
+        ];
+        title = 'Reporte de Ventas Directas';
+        break;
+
       default:
         return res.status(400).json({ error: 'Invalid module.' });
     }
@@ -187,7 +200,7 @@ router.get('/:module/:format', async (req, res) => {
           };
 
           const isNumeric = ['stock', 'min_stock', 'max_stock', 'rating', 'reorder_point'].includes(col.key);
-          const isCurrency = ['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost'].includes(col.key);
+          const isCurrency = ['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost', 'total'].includes(col.key);
 
           if (isNumeric) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
@@ -195,7 +208,7 @@ router.get('/:module/:format', async (req, res) => {
           } else if (isCurrency) {
             cell.alignment = { horizontal: 'right', vertical: 'middle' };
             cell.numFmt = '$#,##0.00';
-          } else if (['sku', 'employee_code', 'code', 'date', 'hire_date', 'start_date', 'end_date', 'status'].includes(col.key)) {
+          } else if (['sku', 'employee_code', 'code', 'date', 'hire_date', 'start_date', 'end_date', 'status', 'id', 'created_at'].includes(col.key)) {
             cell.alignment = { horizontal: 'center', vertical: 'middle' };
           } else {
             cell.alignment = { horizontal: 'left', vertical: 'middle' };
@@ -214,7 +227,7 @@ router.get('/:module/:format', async (req, res) => {
           const val = row[col.key];
           if (val != null) {
             let formatted = String(val);
-            if (['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost'].includes(col.key)) {
+            if (['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost', 'total'].includes(col.key)) {
               formatted = `$${Number(val).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
             }
             if (formatted.length > maxLen) maxLen = formatted.length;
@@ -255,6 +268,9 @@ router.get('/:module/:format', async (req, res) => {
           break;
         case 'travel':
           colWidths = { employee: 0.15, destination: 0.13, origin: 0.10, purpose: 0.18, start_date: 0.09, end_date: 0.09, estimated_budget: 0.09, actual_cost: 0.09, status: 0.08 };
+          break;
+        case 'sales':
+          colWidths = { created_at: 0.20, id: 0.10, customer_name: 0.25, payment_method: 0.15, creator: 0.20, total: 0.10 };
           break;
         default:
           colWidths = {};
@@ -311,14 +327,14 @@ router.get('/:module/:format', async (req, res) => {
           const w = (colWidths[col.key] || (1 / columns.length)) * pageWidth;
           let val = row[col.key] != null ? String(row[col.key]) : '';
           
-          const isCurrency = ['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost'].includes(col.key);
+          const isCurrency = ['cost_price', 'sale_price', 'base_salary', 'amount', 'estimated_budget', 'actual_cost', 'unit_cost', 'total'].includes(col.key);
           const isNumeric = ['stock', 'min_stock', 'max_stock', 'rating', 'reorder_point'].includes(col.key);
           
           if (isCurrency && val !== '') {
             val = `$${Number(val).toLocaleString('es-MX', { minimumFractionDigits: 2 })}`;
           } else if (isNumeric && val !== '') {
             val = Number(val).toLocaleString('es-MX');
-          } else if (col.key === 'date' || col.key === 'hire_date' || col.key === 'start_date' || col.key === 'end_date') {
+          } else if (col.key === 'date' || col.key === 'hire_date' || col.key === 'start_date' || col.key === 'end_date' || col.key === 'created_at') {
             try {
               if (val) {
                 const d = new Date(val);
@@ -331,7 +347,7 @@ router.get('/:module/:format', async (req, res) => {
 
           let align = 'left';
           if (isCurrency || isNumeric) align = 'right';
-          else if (['sku', 'employee_code', 'code', 'date', 'hire_date', 'start_date', 'end_date', 'status'].includes(col.key)) align = 'center';
+          else if (['sku', 'employee_code', 'code', 'date', 'hire_date', 'start_date', 'end_date', 'status', 'id', 'created_at'].includes(col.key)) align = 'center';
 
           doc.text(
             val, 

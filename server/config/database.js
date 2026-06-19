@@ -298,6 +298,8 @@ export async function initDatabase() {
       status TEXT DEFAULT 'completed',
       customer_name TEXT,
       created_by INTEGER,
+      paid_amount REAL DEFAULT 0,
+      change_amount REAL DEFAULT 0,
       created_at TEXT DEFAULT (datetime('now'))
     );
 
