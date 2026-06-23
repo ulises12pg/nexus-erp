@@ -1096,12 +1096,27 @@ function SettingsPage({ onModulesChange }) {
   const lang = useLang();
   const { user } = useAuth();
   const toast = useToast();
+  const confirmDialog = useConfirm();
   const [sectors, setSectors] = useState([]);
   const [customFields, setCustomFields] = useState([]);
   const [users, setUsers] = useState([]);
   const [tab, setTab] = useState('sector');
   const [loading, setLoading] = useState(true);
   const [currentSector, setCurrentSector] = useState(null);
+
+  // User modal state
+  const [userModalOpen, setUserModalOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState(null);
+  const [userFormData, setUserFormData] = useState({});
+
+  const loadUsers = async () => {
+    if (user.role === 'superadmin' || user.role === 'admin') {
+      try {
+        const u = await api.getUsers();
+        setUsers(u);
+      } catch(e) { toast(e.message, 'error'); }
+    }
+  };
 
   useEffect(() => {
     setLoading(true);
@@ -1114,6 +1129,45 @@ function SettingsPage({ onModulesChange }) {
       setSectors(s); setCustomFields(cf); setUsers(u); setCurrentSector(cs);
     }).catch(e => toast(e.message, 'error')).finally(() => setLoading(false));
   }, []);
+
+  const openAddUser = () => {
+    setEditingUser(null);
+    setUserFormData({ role: 'operator', active: 1, language: 'es' });
+    setUserModalOpen(true);
+  };
+  
+  const openEditUser = (u) => {
+    setEditingUser(u);
+    setUserFormData({ ...u, password: '' });
+    setUserModalOpen(true);
+  };
+
+  const handleSaveUser = async () => {
+    try {
+      if (editingUser) {
+        await api.updateUser(editingUser.id, userFormData);
+        toast(t('success_update', lang));
+      } else {
+        await api.createUser(userFormData);
+        toast(t('success_create', lang) || 'Created successfully');
+      }
+      setUserModalOpen(false);
+      loadUsers();
+    } catch(e) { toast(e.message, 'error'); }
+  };
+
+  const deleteUser = async (id) => {
+    const confirmed = await confirmDialog({
+      title: lang === 'en' ? 'Delete User' : 'Eliminar Usuario',
+      message: lang === 'en' ? 'Are you sure you want to delete this user?' : '¿Estás seguro de que deseas eliminar este usuario?'
+    });
+    if (!confirmed) return;
+    try {
+      await api.deleteUser(id);
+      toast(lang === 'en' ? 'User deleted!' : '¡Usuario eliminado!');
+      loadUsers();
+    } catch(e) { toast(e.message, 'error'); }
+  };
 
   /* Skill §4: no-emoji-icons — use SVG Lucide icons instead of emojis */
   const ALL_MODULES = [
@@ -1213,16 +1267,65 @@ function SettingsPage({ onModulesChange }) {
         )}
 
         {tab === 'users' && (
-          <div className="table-container glass-card">
-            <table>
-              <thead><tr><th>{t('username', lang)}</th><th>{t('name', lang)}</th><th>{t('email', lang)}</th><th>Rol</th><th>{t('status', lang)}</th><th>{lang === 'en' ? 'Last Login' : 'Último Acceso'}</th></tr></thead>
-              <tbody>{users.map(u => (
-                <tr key={u.id}><td style={{fontWeight:600}}>{u.username}</td><td>{u.full_name}</td><td>{u.email}</td><td><span className="badge badge-info">{u.role}</span></td><td>{u.active ? <span className="badge badge-success">{t('active',lang)}</span> : <span className="badge badge-danger">{t('inactive',lang)}</span>}</td><td style={{fontSize:'0.8rem',color:'var(--text-tertiary)'}}>{u.last_login || '-'}</td></tr>
-              ))}</tbody>
-            </table>
+          <div className="glass-card" style={{ padding: 24 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+              <h3 style={{ margin: 0 }}>{t('set_users', lang)}</h3>
+              <button className="btn btn-primary btn-sm" onClick={openAddUser}><Plus size={16} /> {lang === 'en' ? 'Add User' : 'Nuevo Usuario'}</button>
+            </div>
+            <div className="table-container">
+              <table>
+                <thead><tr><th>{t('username', lang)}</th><th>{t('name', lang)}</th><th>{t('email', lang)}</th><th>Rol</th><th>{t('status', lang)}</th><th>{lang === 'en' ? 'Last Login' : 'Último Acceso'}</th><th>{t('actions', lang)}</th></tr></thead>
+                <tbody>{users.map(u => (
+                  <tr key={u.id}><td style={{fontWeight:600}}>{u.username}</td><td>{u.full_name}</td><td>{u.email}</td><td><span className="badge badge-info">{u.role}</span></td><td>{u.active ? <span className="badge badge-success">{t('active',lang)}</span> : <span className="badge badge-danger">{t('inactive',lang)}</span>}</td><td style={{fontSize:'0.8rem',color:'var(--text-tertiary)'}}>{u.last_login || '-'}</td>
+                  <td>
+                    <div style={{display:'flex',gap:4}}>
+                      <button className="btn btn-ghost btn-icon btn-sm" onClick={() => openEditUser(u)}><Edit3 size={14}/></button>
+                      <button className="btn btn-ghost btn-sm" style={{color:'var(--danger)', padding: '0 8px'}} onClick={() => deleteUser(u.id)}><Trash2 size={14}/></button>
+                    </div>
+                  </td>
+                  </tr>
+                ))}</tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>
+
+      <Modal isOpen={userModalOpen} onClose={() => setUserModalOpen(false)} title={editingUser ? (lang === 'en' ? 'Edit User' : 'Editar Usuario') : (lang === 'en' ? 'Add User' : 'Nuevo Usuario')} wide>
+        <div className="modal-body form-grid">
+          <div className="form-group"><label className="form-label">{t('username', lang)} *</label><input className="form-input" value={userFormData.username || ''} onChange={e => setUserFormData({...userFormData, username: e.target.value})} /></div>
+          <div className="form-group"><label className="form-label">{t('email', lang)} *</label><input className="form-input" type="email" value={userFormData.email || ''} onChange={e => setUserFormData({...userFormData, email: e.target.value})} /></div>
+          <div className="form-group col-span-2"><label className="form-label">{t('name', lang)} *</label><input className="form-input" value={userFormData.full_name || ''} onChange={e => setUserFormData({...userFormData, full_name: e.target.value})} /></div>
+          <div className="form-group"><label className="form-label">{lang === 'en' ? 'Password' : 'Contraseña'} {editingUser ? '(Opcional)' : '*'}</label><input className="form-input" type="password" value={userFormData.password || ''} onChange={e => setUserFormData({...userFormData, password: e.target.value})} /></div>
+          <div className="form-group">
+            <label className="form-label">Rol *</label>
+            <select className="form-input" value={userFormData.role || 'operator'} onChange={e => setUserFormData({...userFormData, role: e.target.value})}>
+              {user.role === 'superadmin' && <option value="admin">Admin</option>}
+              <option value="manager">Manager</option>
+              <option value="operator">Operator</option>
+              <option value="viewer">Viewer</option>
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">{t('set_sector', lang)}</label>
+            <select className="form-input" value={userFormData.sector_id || ''} onChange={e => setUserFormData({...userFormData, sector_id: e.target.value})}>
+              <option value="">{lang === 'en' ? 'Select sector...' : 'Seleccione sector...'}</option>
+              {sectors.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            </select>
+          </div>
+          <div className="form-group">
+            <label className="form-label">{t('status', lang)}</label>
+            <select className="form-input" value={userFormData.active !== undefined ? userFormData.active : 1} onChange={e => setUserFormData({...userFormData, active: Number(e.target.value)})}>
+              <option value={1}>{t('active', lang)}</option>
+              <option value={0}>{t('inactive', lang)}</option>
+            </select>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button className="btn btn-secondary" onClick={() => setUserModalOpen(false)}>{t('cancel', lang)}</button>
+          <button className="btn btn-primary" onClick={handleSaveUser}>{t('save', lang)}</button>
+        </div>
+      </Modal>
     </>
   );
 }

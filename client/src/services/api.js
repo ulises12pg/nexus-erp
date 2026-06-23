@@ -57,7 +57,9 @@ class ApiService {
   getProfile() { return this.get('/auth/me'); }
   updateProfile(data) { return this.put('/auth/profile', data); }
   getUsers() { return this.get('/auth/users'); }
-
+  createUser(data) { return this.post('/auth/users', data); }
+  updateUser(id, data) { return this.put(`/auth/users/${id}`, data); }
+  deleteUser(id) { return this.delete(`/auth/users/${id}`); }
   // Dashboard
   getDashboardStats() { return this.get('/dashboard/stats'); }
 
