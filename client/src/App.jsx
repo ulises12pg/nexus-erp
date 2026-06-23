@@ -277,7 +277,7 @@ function LoginPage({ onLogin }) {
           </button>
         </form>
         <div style={{ textAlign: 'center', color: 'var(--text-tertiary)', fontSize: '0.75rem', marginTop: 16 }}>
-          Demo: admin / admin123
+          Demo: demo / demo123
         </div>
       </div>
     </div>
@@ -289,9 +289,17 @@ function LoginPage({ onLogin }) {
 // ==============================
 function Sidebar({ user, lang, setLang, onLogout, activeModules }) {
   const location = useLocation();
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(() => window.innerWidth < 770);
   const [hoverLogout, setHoverLogout] = useState(false);
   const { theme, setTheme } = useTheme();
+  
+  useEffect(() => {
+    const mql = window.matchMedia('(max-width: 770px)');
+    const handleChange = (e) => setCollapsed(e.matches);
+    mql.addEventListener('change', handleChange);
+    return () => mql.removeEventListener('change', handleChange);
+  }, []);
+
   const sectorIcons = { truck: Truck, wrench: Wrench, factory: Factory, cog: Settings, flame: Flame };
 
   const modules = [
@@ -1589,7 +1597,7 @@ function DirectSalesPage() {
               
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: 16, maxHeight: '65vh', overflow: 'auto', paddingRight: 8 }}>
                 {filteredProducts.map(p => (
-                  <div key={p.id} className="glass-card" style={{ padding: 16, cursor: p.stock > 0 ? 'pointer' : 'not-allowed', opacity: p.stock > 0 ? 1 : 0.6, display: 'flex', flexDirection: 'column', gap: 8, border: '1px solid var(--border-color)', transition: 'transform 0.2s, box-shadow 0.2s' }} onClick={() => p.stock > 0 && addToCart(p)} onMouseEnter={e => e.currentTarget.style.transform = p.stock > 0 ? 'translateY(-2px)' : 'none'} onMouseLeave={e => e.currentTarget.style.transform = 'none'}>
+                  <div key={p.id} className="glass-card" style={{ padding: 16, cursor: p.stock > 0 ? 'pointer' : 'not-allowed', opacity: p.stock > 0 ? 1 : 0.6, display: 'flex', flexDirection: 'column', gap: 8, border: '2px solid var(--text-tertiary)', transition: 'transform 0.2s, box-shadow 0.2s' }} onClick={() => p.stock > 0 && addToCart(p)} onMouseEnter={e => { e.currentTarget.style.transform = p.stock > 0 ? 'translateY(-2px)' : 'none'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }} onMouseLeave={e => { e.currentTarget.style.transform = 'none'; e.currentTarget.style.borderColor = 'var(--text-tertiary)'; }}>
                     <div style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', fontWeight: 600 }}>{p.sku}</div>
                     <div style={{ fontWeight: 600, lineHeight: 1.2 }}>{p.name}</div>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 'auto' }}>
