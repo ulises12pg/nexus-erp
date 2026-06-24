@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <!-- Gradients -->
+    <linearGradient id="leftGrad" x1="136" y1="376" x2="136" y2="136" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#6366f1" />
+      <stop offset="100%" stop-color="#8b5cf6" />
+    </linearGradient>
+    <linearGradient id="rightGrad" x1="376" y1="376" x2="376" y2="136" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#a78bfa" />
+    </linearGradient>
+    <linearGradient id="diagGrad" x1="136" y1="136" x2="376" y2="376" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#8b5cf6" />
+      <stop offset="100%" stop-color="#6366f1" />
+    </linearGradient>
+    <radialGradient id="centerNode" cx="35%" cy="35%" r="65%">
+      <stop offset="0%" stop-color="#ffffff" />
+      <stop offset="30%" stop-color="#22d3ee" />
+      <stop offset="70%" stop-color="#0891b2" />
+      <stop offset="100%" stop-color="#0369a1" />
+    </radialGradient>
+    
+    <!-- Filters -->
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#020617" flood-opacity="0.75" />
+    </filter>
+    <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="12" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+    <filter id="subtle-glow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="6" result="blur" />
+      <feMerge>
+        <feMergeNode in="blur" />
+        <feMergeNode in="SourceGraphic" />
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Network background (Faint connection lines and points) -->
+  <g opacity="0.25">
+    <line x1="136" y1="256" x2="256" y2="256" stroke="#6366f1" stroke-width="3" stroke-dasharray="6 6" />
+    <line x1="256" y1="256" x2="376" y2="256" stroke="#8b5cf6" stroke-width="3" stroke-dasharray="6 6" />
+    <line x1="136" y1="136" x2="256" y2="256" stroke="#6366f1" stroke-width="2" />
+    <line x1="376" y1="136" x2="256" y2="256" stroke="#a78bfa" stroke-width="2" />
+    
+    <!-- Faint outer network nodes -->
+    <circle cx="80" cy="200" r="8" fill="#6366f1" filter="url(#subtle-glow)" />
+    <line x1="80" y1="200" x2="136" y2="256" stroke="#6366f1" stroke-width="1.5" opacity="0.5" />
+    
+    <circle cx="432" cy="312" r="8" fill="#a78bfa" filter="url(#subtle-glow)" />
+    <line x1="432" y1="312" x2="376" y2="256" stroke="#a78bfa" stroke-width="1.5" opacity="0.5" />
+
+    <circle cx="256" cy="80" r="6" fill="#8b5cf6" filter="url(#subtle-glow)" />
+    <line x1="256" y1="80" x2="256" y2="256" stroke="#8b5cf6" stroke-width="1.5" opacity="0.5" />
+  </g>
+
+  <!-- Logo Icon Container (Soft glow behind the N) -->
+  <circle cx="256" cy="256" r="180" fill="none" stroke="url(#diagGrad)" stroke-width="4" opacity="0.15" />
+
+  <!-- Left vertical pillar -->
+  <path d="M 136 376 L 136 136" stroke="url(#leftGrad)" stroke-width="85" stroke-linecap="round" />
+
+  <!-- Diagonal pillar (cuts across, casts shadow) -->
+  <path d="M 136 136 L 376 376" stroke="url(#diagGrad)" stroke-width="85" stroke-linecap="round" filter="url(#shadow)" />
+
+  <!-- Right vertical pillar (casts shadow on the diagonal at the bottom join) -->
+  <path d="M 376 376 L 376 136" stroke="url(#rightGrad)" stroke-width="85" stroke-linecap="round" filter="url(#shadow)" />
+
+  <!-- Central Nexus Node (Power core/connector) -->
+  <circle cx="256" cy="256" r="32" fill="url(#centerNode)" filter="url(#glow)" />
+  <!-- Core border -->
+  <circle cx="256" cy="256" r="32" fill="none" stroke="#ffffff" stroke-width="2" opacity="0.8" />
+  <!-- Small orbit points inside core for tech look -->
+  <circle cx="256" cy="256" r="44" fill="none" stroke="#22d3ee" stroke-width="1.5" stroke-dasharray="4 8" opacity="0.6" />
+</svg>
