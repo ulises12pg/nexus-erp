@@ -128,14 +128,12 @@ class ApiService {
   createCustomField(data) { return this.post('/settings/custom-fields', data); }
   getAuditLog(params = '') { return this.get(`/settings/audit-log${params ? '?' + params : ''}`); }
 
-  // Export — direct browser download (bypasses Vite proxy to preserve Content-Disposition / MIME type)
+  // Export — direct browser download
   exportData(module, format) {
     const token = this.getToken();
     const ext = format === 'excel' ? 'xlsx' : 'pdf';
-    // Build a direct URL to the backend (port 3001), passing JWT as query param.
-    // This lets the browser handle the file download natively — no fetch/blob needed,
-    // which means the OS sees the correct Content-Type + filename with extension.
-    const backendUrl = `http://localhost:3001/api/export/${module}/${format}?token=${encodeURIComponent(token)}`;
+    // Use relative URL in production, direct backend URL in dev
+    const backendUrl = `${window.location.origin}/api/export/${module}/${format}?token=${encodeURIComponent(token)}`;
     const a = document.createElement('a');
     a.style.display = 'none';
     a.href = backendUrl;
@@ -143,7 +141,6 @@ class ApiService {
     document.body.appendChild(a);
     a.click();
     setTimeout(() => document.body.removeChild(a), 500);
-    // Return resolved promise so callers can await and show success toast
     return Promise.resolve();
   }
 

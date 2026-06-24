@@ -1,0 +1,16 @@
+{
+  "name": "nexus-erp",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NEXUS ERP — Multi-sector Enterprise Resource Planning",
+  "scripts": {
+    "install:all": "cd server && npm install && cd ../client && npm install",
+    "build": "cd client && npm run build",
+    "start": "cd server && node app.js",
+    "dev:server": "cd server && npm run dev",
+    "dev:client": "cd client && npm run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

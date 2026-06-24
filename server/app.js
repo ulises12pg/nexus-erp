@@ -26,15 +26,24 @@ const __dirname = path.dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3001;
+const isProduction = process.env.NODE_ENV === 'production';
 
 // Middleware
-app.use(helmet({ crossOriginResourcePolicy: { policy: "cross-origin" } }));
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false,
+}));
+
+const allowedOrigins = ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'];
+if (process.env.RAILWAY_PUBLIC_DOMAIN) {
+  allowedOrigins.push(`https://${process.env.RAILWAY_PUBLIC_DOMAIN}`);
+}
 app.use(cors({
-  origin: ['http://localhost:5173', 'http://localhost:3000', 'http://127.0.0.1:5173'],
+  origin: isProduction ? true : allowedOrigins,
   credentials: true,
   exposedHeaders: ['Content-Disposition', 'Content-Length', 'Content-Type'],
 }));
-app.use(morgan('dev'));
+app.use(morgan(isProduction ? 'combined' : 'dev'));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -73,11 +82,24 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
 });
 
+// Serve frontend static files in production
+const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
+if (fs.existsSync(clientDistPath)) {
+  app.use(express.static(clientDistPath));
+}
+
 // Error handling
 app.use((err, req, res, next) => {
   console.error('Server Error:', err.stack);
   res.status(500).json({ error: 'Internal server error', message: err.message });
 });
+
+// SPA fallback — serve index.html for any non-API route
+if (fs.existsSync(clientDistPath)) {
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(clientDistPath, 'index.html'));
+  });
+}
 
 // Start server
 async function start() {
