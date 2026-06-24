@@ -82,16 +82,6 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString(), version: '1.0.0' });
 });
 
-app.get('/api/debug-users', (req, res) => {
-  try {
-    const db = getDb();
-    const users = db.prepare('SELECT id, username, role, active FROM users').all();
-    res.json({ count: users.length, users });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Serve frontend static files in production
 const clientDistPath = path.join(__dirname, '..', 'client', 'dist');
 if (fs.existsSync(clientDistPath)) {
