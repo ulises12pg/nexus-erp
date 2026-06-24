@@ -30,6 +30,7 @@ sectors.forEach(s => db.prepare('INSERT INTO sectors (name, slug, description, i
 
 // USERS
 const ph = bcrypt.hashSync('admin123', 12);
+const phDemo = bcrypt.hashSync('demo123', 12);
 const users = [
   ['admin', 'admin@nexus-erp.com', 'Administrador General', 'superadmin', 1],
   ['carlos.mendez', 'carlos@nexus-erp.com', 'Carlos Méndez López', 'admin', 1],
@@ -40,6 +41,8 @@ const users = [
   ['viewer1', 'viewer@nexus-erp.com', 'Laura Martínez', 'viewer', 1],
 ];
 users.forEach(u => db.prepare('INSERT INTO users (username, email, password_hash, full_name, role, sector_id) VALUES (?,?,?,?,?,?)').run(u[0], u[1], ph, u[2], u[3], u[4]));
+// Demo user with limited privileges
+db.prepare('INSERT INTO users (username, email, password_hash, full_name, role, sector_id) VALUES (?,?,?,?,?,?)').run('demo', 'demo@nexus-erp.com', phDemo, 'Usuario Demo', 'viewer', 2);
 
 // CUSTOM FIELDS
 const cfs = [
@@ -262,6 +265,7 @@ console.log('   Admin Tlapa:  roberto.tlapa / admin123');
 console.log('   Admin Cement: maria.cemento / admin123');
 console.log('   Operator:     operator1 / admin123');
 console.log('   Viewer:       viewer1 / admin123');
+console.log('   Demo:         demo / demo123');
 console.log('');
 console.log('🏭 Sectors: Transporte, Tlapalería, Planta Cementera, Alquiler Maquinaria, Metalurgia');
 

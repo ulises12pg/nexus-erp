@@ -1,5 +1,5 @@
 [phases.setup]
-nixPkgs = ["nodejs_20", "npm-10_x"]
+nixPkgs = ["nodejs_18", "npm-9_x"]
 
 [phases.install]
 cmds = [
@@ -13,4 +13,4 @@ cmds = [
 ]
 
 [start]
-cmd = "cd server && NODE_ENV=production node app.js"
+cmd = "cd server && node seeds/seed.js && NODE_ENV=production node app.js"
