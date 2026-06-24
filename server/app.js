@@ -110,6 +110,27 @@ async function start() {
   // Initialize database
   await initDatabase();
 
+  // Auto-seed if database is empty of users
+  const db = getDb();
+  let userCount = 0;
+  try {
+    const row = db.prepare('SELECT COUNT(*) as count FROM users').get();
+    userCount = row ? row.count : 0;
+  } catch (err) {
+    console.error('⚠️ Could not check user count in database:', err.message);
+  }
+
+  if (userCount === 0) {
+    console.log('🌱 No users found in database. Automatically seeding...');
+    try {
+      const { seed } = await import('./seeds/seed.js');
+      await seed(db);
+      console.log('🌱 Seeding complete.');
+    } catch (seedErr) {
+      console.error('❌ Automatic seeding failed:', seedErr.message);
+    }
+  }
+
   app.listen(PORT, () => {
     console.log('');
     console.log('╔══════════════════════════════════════════════╗');
